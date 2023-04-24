@@ -1,0 +1,24 @@
+name: Checks
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    steps:
+    - uses: actions/checkout@v3.5.2
+    - name: Set up JDK
+      uses: actions/setup-java@v3.11.0
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+        cache: 'sbt'
+    - name: Run checks
+      run: sbt scalafmtCheckAll test
