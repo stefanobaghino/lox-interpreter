@@ -8,9 +8,13 @@ object Main {
   object ExitCode {
     val UsageError = 64
     val InvalidInput = 65
+    val RuntimeError = 70
   }
 
+  private val interpreter = new Interpreter
+
   private var hadError = false
+  private var hadRuntimeError = false
 
   def main(args: Array[String]): Unit =
     if (args.length > 1) {
@@ -20,6 +24,9 @@ object Main {
       run(Files.readString(Paths.get(args(0))))
       if (hadError) {
         sys.exit(ExitCode.InvalidInput)
+      }
+      if (hadRuntimeError) {
+        sys.exit(ExitCode.RuntimeError)
       }
     } else {
       runPrompt()
@@ -46,8 +53,7 @@ object Main {
 
     // Stop if there was a syntax error.
     if (!hadError) {
-      val printer = new AstPrinter
-      println(expr.accept(printer))
+      interpreter.interpret(expr)
     }
 
   }
@@ -61,6 +67,11 @@ object Main {
       if (token.tokenType == TokenType.Eof) " at end"
       else s"at '${token.lexeme}'"
     report(token.line, location, message)
+  }
+
+  def runtimeError(error: Interpreter.Error): Unit = {
+    System.err.println(error.getMessage + "\n[line " + error.token.line + "]")
+    hadRuntimeError = true
   }
 
   private def report(line: Int, where: String, message: String): Unit = {
