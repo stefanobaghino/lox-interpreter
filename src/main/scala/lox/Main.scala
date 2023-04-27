@@ -41,14 +41,26 @@ object Main {
   private def run(source: String): Unit = {
     val scanner = new Scanner(source)
     val tokens = scanner.scanTokens()
-    // For now, just print the tokens.
-    for (token <- tokens) {
-      println(token)
+    val parser = new Parser(tokens)
+    val expr = parser.parse()
+
+    // Stop if there was a syntax error.
+    if (!hadError) {
+      val printer = new AstPrinter
+      println(expr.accept(printer))
     }
+
   }
 
   private[lox] def error(line: Int, message: String): Unit = {
     report(line, "", message)
+  }
+
+  private[lox] def error(token: Token, message: String): Unit = {
+    val location =
+      if (token.tokenType == TokenType.Eof) " at end"
+      else s"at '${token.lexeme}'"
+    report(token.line, location, message)
   }
 
   private def report(line: Int, where: String, message: String): Unit = {
