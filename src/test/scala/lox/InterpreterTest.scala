@@ -134,4 +134,42 @@ final class InterpreterTest extends munit.FunSuite {
     assertEquals(error.token, Tokens.Plus)
   }
 
+  test("var a = 1; { var b = 1; a = a + b; }") {
+    val B = Token(TokenType.Identifier, "b", null, 1)
+    val interpreter = new Interpreter
+    val statements =
+      List(
+        Statement.Variable(Tokens.Identifier, Expr.Literal(1.0)),
+        Statement.Block(
+          List(
+            Statement.Variable(B, Expr.Literal(1.0)),
+            Statement.Expression(
+              Expr.Assign(
+                Tokens.Identifier,
+                Expr.Binary(
+                  Expr.Variable(Tokens.Identifier),
+                  Tokens.Plus,
+                  Expr.Variable(B),
+                ),
+              )
+            ),
+          )
+        ),
+      )
+
+    interpreter.interpret(statements)
+
+    val aEquals2 =
+      Expr
+        .Binary(
+          Expr.Variable(Tokens.Identifier),
+          Tokens.EqualEqual,
+          Expr.Literal(2.0),
+        )
+        .accept(interpreter)
+        .asInstanceOf[Boolean]
+
+    assert(aEquals2)
+  }
+
 }

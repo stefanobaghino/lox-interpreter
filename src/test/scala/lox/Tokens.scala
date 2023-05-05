@@ -21,5 +21,12 @@ object Tokens {
   val Star: Token = Token(TokenType.Star, "*", null, 1)
   val Slash: Token = Token(TokenType.Slash, "/", null, 1)
   val Bang: Token = Token(TokenType.Bang, "!", null, 1)
+  val Semicolon: Token = Token(TokenType.Semicolon, ";", null, 1)
+  val Var: Token = Token(TokenType.Var, "var", null, 1)
+  val Identifier: Token = Token(TokenType.Identifier, "a", null, 1)
+  val Equal: Token = Token(TokenType.Equal, "=", null, 1)
+  val LeftBrace: Token = Token(TokenType.LeftBrace, "{", null, 1)
+  val RightBrace: Token = Token(TokenType.RightBrace, "}", null, 1)
+  val Print: Token = Token(TokenType.Print, "print", null, 1)
 
 }

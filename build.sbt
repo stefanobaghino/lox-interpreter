@@ -10,4 +10,5 @@ lazy val root = (project in file("."))
     libraryDependencies ++= Seq(
       "org.scalameta" %% "munit" % "0.7.29" % Test
     ),
+    Test / unmanagedSourceDirectories += (Test / sourceDirectory).value / "lox",
   )

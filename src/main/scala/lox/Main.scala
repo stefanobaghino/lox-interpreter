@@ -49,11 +49,11 @@ object Main {
     val scanner = new Scanner(source)
     val tokens = scanner.scanTokens()
     val parser = new Parser(tokens)
-    val expr = parser.parse()
+    val statements = parser.parse()
 
     // Stop if there was a syntax error.
     if (!hadError) {
-      interpreter.interpret(expr)
+      interpreter.interpret(statements)
     }
 
   }
