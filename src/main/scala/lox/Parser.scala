@@ -10,11 +10,77 @@ final class Parser(tokens: List[Token]) {
 
   private var current = 0
 
-  def parse(): Expr =
-    try expression()
-    catch { case _: Parser.Error => null }
+  def parse(): List[Statement] = {
+    val statements = List.newBuilder[Statement]
+    while (!reachedEnd) statements += declaration()
+    statements.result()
+  }
 
-  private def expression(): Expr = equality()
+  private def declaration(): Statement =
+    try {
+      if (matching(TokenType.Var)) variableDeclaration()
+      else statement()
+    } catch {
+      case _: Parser.Error =>
+        synchronize()
+        null
+    }
+
+  private def variableDeclaration(): Statement = {
+    val name: Token = consume(TokenType.Identifier, "Expect variable name.")
+    val initializer: Expr =
+      if (matching(TokenType.Equal)) {
+        expression()
+      } else {
+        null
+      }
+
+    consume(TokenType.Semicolon, "Expect ';' after variable declaration.")
+    Statement.Variable(name, initializer)
+  }
+
+  private def statement(): Statement =
+    if (matching(TokenType.Print)) printStatement()
+    else if (matching(TokenType.LeftBrace)) Statement.Block(block())
+    else expressionStatement()
+
+  private def block(): List[Statement] = {
+    val statements = List.newBuilder[Statement]
+    while (!check(TokenType.RightBrace) && !reachedEnd()) {
+      statements += declaration()
+    }
+    consume(TokenType.RightBrace, "Expect '}' after block.")
+    statements.result()
+  }
+
+  private def printStatement(): Statement.Print = {
+    val value = expression()
+    consume(TokenType.Semicolon, "Expect ';' after value.")
+    Statement.Print(value)
+  }
+
+  private def expressionStatement(): Statement.Expression = {
+    val value = expression()
+    consume(TokenType.Semicolon, "Expect ';' after value.")
+    Statement.Expression(value)
+  }
+
+  private def expression(): Expr = assignment()
+
+  private def assignment(): Expr = {
+    val expr = equality()
+
+    if (matching(TokenType.Equal)) {
+      val equals = previous()
+      val value = assignment()
+      expr match {
+        case Expr.Variable(name) => return Expr.Assign(name, value)
+        case _ => error(equals, "Invalid assignment target.")
+      }
+    }
+
+    expr
+  }
 
   private def equality(): Expr = {
     var expr: Expr = comparison()
@@ -79,6 +145,8 @@ final class Parser(tokens: List[Token]) {
     else if (matching(TokenType.Nil)) Expr.Literal(null)
     else if (matching(TokenType.Number, TokenType.String)) {
       Expr.Literal(previous().literal)
+    } else if (matching(TokenType.Identifier)) {
+      Expr.Variable(previous())
     } else if (matching(TokenType.LeftParen)) {
       val expr: Expr = expression()
       consume(TokenType.RightParen, "Expect ')' after expression.")

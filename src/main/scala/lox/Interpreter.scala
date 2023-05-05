@@ -7,16 +7,62 @@ object Interpreter {
 
 }
 
-final class Interpreter extends Expr.Visitor[Any] {
+final class Interpreter extends Expr.Visitor[Any] with Statement.Visitor[Any] {
 
-  def interpret(expression: Expr): Unit = {
+  private var environment = new Environment
+
+  def interpret(statements: List[Statement]): Unit =
     try {
-      val value = evaluate(expression)
-      println(stringify(value))
+      for (statement <- statements) {
+        execute(statement)
+      }
     } catch {
       case error: Interpreter.Error =>
         Main.runtimeError(error)
     }
+
+  private def execute(statement: Statement): Unit =
+    statement.accept(this)
+
+  private def executeBlock(
+      value: List[Statement],
+      environment: Environment,
+  ): Unit = {
+    val previous = this.environment
+    try {
+      this.environment = environment
+      value.foreach(execute)
+    } finally {
+      this.environment = previous
+    }
+  }
+
+  override def visitBlock(block: Statement.Block): Any = {
+    executeBlock(block.statements, new Environment(environment))
+    null
+  }
+
+  override def visitExpression(expr: Statement.Expression): Any = {
+    evaluate(expr.expression)
+    null
+  }
+
+  override def visitPrint(print: Statement.Print): Any = {
+    val value = evaluate(print.expression)
+    println(stringify(value))
+    null
+  }
+
+  override def visitVariableDeclaration(variable: Statement.Variable): Any = {
+    val value =
+      if (variable.initializer != null) evaluate(variable.initializer) else null
+    environment.define(variable.name.lexeme, value)
+    null
+  }
+
+  override def visitAssign(assign: Expr.Assign): Any = {
+    val value = evaluate(assign.value)
+    environment.assign(assign.name, value)
   }
 
   override def visitBinary(binary: Expr.Binary): Any = {
@@ -84,6 +130,9 @@ final class Interpreter extends Expr.Visitor[Any] {
         null // Unreachable
     }
   }
+
+  override def visitVariableLookup(variable: Expr.Variable): Any =
+    environment.get(variable.name)
 
   private def checkNumberOperand(operator: Token, operand: Any): Unit =
     if (!operand.isInstanceOf[Double])

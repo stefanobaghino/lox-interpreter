@@ -11,10 +11,16 @@ sealed trait Expr {
 object Expr {
 
   trait Visitor[A] {
+    def visitAssign(assign: Assign): A
     def visitBinary(binary: Binary): A
     def visitGrouping(grouping: Grouping): A
     def visitLiteral(literal: Literal): A
     def visitUnary(unary: Unary): A
+    def visitVariableLookup(variable: Variable): A
+  }
+
+  final case class Assign(name: Token, value: Expr) extends Expr {
+    override def accept[A](visitor: Visitor[A]): A = visitor.visitAssign(this)
   }
 
   final case class Binary(left: Expr, operator: Token, right: Expr)
@@ -32,6 +38,11 @@ object Expr {
 
   final case class Unary(operator: Token, right: Expr) extends Expr {
     override def accept[A](visitor: Visitor[A]): A = visitor.visitUnary(this)
+  }
+
+  final case class Variable(name: Token) extends Expr {
+    override def accept[A](visitor: Visitor[A]): A =
+      visitor.visitVariableLookup(this)
   }
 
 }
