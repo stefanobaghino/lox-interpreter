@@ -159,17 +159,118 @@ final class InterpreterTest extends munit.FunSuite {
 
     interpreter.interpret(statements)
 
-    val aEquals2 =
-      Expr
-        .Binary(
-          Expr.Variable(Tokens.Identifier),
-          Tokens.EqualEqual,
-          Expr.Literal(2.0),
-        )
-        .accept(interpreter)
-        .asInstanceOf[Boolean]
+    val a =
+      Expr.Variable(Tokens.Identifier).accept(interpreter).asInstanceOf[Double]
 
-    assert(aEquals2)
+    assertEquals(a, 2.0)
+  }
+
+  test("var a = 1; if (a == 2) a = false; else a = true;") {
+    val interpreter = new Interpreter
+    val statements =
+      List(
+        Statement.Variable(Tokens.Identifier, Expr.Literal(1.0)),
+        Statement.If(
+          Expr.Binary(
+            Expr.Literal(Tokens.Identifier),
+            Tokens.EqualEqual,
+            Expr.Literal(2.0),
+          ),
+          Statement.Expression(
+            Expr.Assign(Tokens.Identifier, Expr.Literal(false))
+          ),
+          Statement.Expression(
+            Expr.Assign(Tokens.Identifier, Expr.Literal(true))
+          ),
+        ),
+      )
+
+    interpreter.interpret(statements)
+
+    val a =
+      Expr.Variable(Tokens.Identifier).accept(interpreter).asInstanceOf[Boolean]
+
+    assert(a)
+  }
+
+  test("var a = 1; if (a or a = 2) true;") {
+    val interpreter = new Interpreter
+    val statements =
+      List(
+        Statement.Variable(Tokens.Identifier, Expr.Literal(1.0)),
+        Statement.If(
+          Expr.Logical(
+            Expr.Variable(Tokens.Identifier),
+            Tokens.Or,
+            Expr.Assign(Tokens.Identifier, Expr.Literal(2.0)),
+          ),
+          Statement.Expression(Expr.Literal(true)),
+          null,
+        ),
+      )
+
+    interpreter.interpret(statements)
+
+    val a =
+      Expr.Variable(Tokens.Identifier).accept(interpreter).asInstanceOf[Double]
+
+    assertEquals(a, 1.0)
+  }
+
+  test("var a = false; if (a and a = 2) true;") {
+    val interpreter = new Interpreter
+    val statements =
+      List(
+        Statement.Variable(Tokens.Identifier, Expr.Literal(false)),
+        Statement.If(
+          Expr.Logical(
+            Expr.Variable(Tokens.Identifier),
+            Tokens.And,
+            Expr.Assign(Tokens.Identifier, Expr.Literal(2.0)),
+          ),
+          Statement.Expression(Expr.Literal(true)),
+          null,
+        ),
+      )
+
+    interpreter.interpret(statements)
+
+    val a =
+      Expr.Variable(Tokens.Identifier).accept(interpreter).asInstanceOf[Boolean]
+
+    assert(!a)
+  }
+
+  test("var a = 1; while (a <= 10) a = a + 1;") {
+    val interpreter = new Interpreter
+    val statements =
+      List(
+        Statement.Variable(Tokens.Identifier, Expr.Literal(1.0)),
+        Statement.While(
+          Expr.Binary(
+            Expr.Variable(Tokens.Identifier),
+            Tokens.LessEqual,
+            Expr.Literal(10.0),
+          ),
+          Statement.Expression(
+            Expr.Assign(
+              Tokens.Identifier,
+              Expr.Binary(
+                Expr.Variable(Tokens.Identifier),
+                Tokens.Plus,
+                Expr.Literal(1.0),
+              ),
+            )
+          ),
+        ),
+      )
+
+    interpreter.interpret(statements)
+
+    val a =
+      Expr.Variable(Tokens.Identifier).accept(interpreter).asInstanceOf[Double]
+
+    assertEquals(a, 11.0)
   }
 
 }

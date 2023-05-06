@@ -39,10 +39,54 @@ final class Parser(tokens: List[Token]) {
     Statement.Variable(name, initializer)
   }
 
-  private def statement(): Statement =
-    if (matching(TokenType.Print)) printStatement()
+  private def statement(): Statement = {
+    if (matching(TokenType.For)) forStatement()
+    else if (matching(TokenType.If)) ifStatement()
+    else if (matching(TokenType.Print)) printStatement()
+    else if (matching(TokenType.While)) whileStatement()
     else if (matching(TokenType.LeftBrace)) Statement.Block(block())
     else expressionStatement()
+  }
+
+  private def forStatement(): Statement = {
+    consume(TokenType.LeftParen, "Expect '(' after 'for'.")
+    val pre =
+      if (matching(TokenType.Semicolon)) null
+      else if (matching(TokenType.Var)) variableDeclaration()
+      else expressionStatement()
+    val condition =
+      if (check(TokenType.Semicolon)) Expr.Literal(true)
+      else expression()
+    consume(TokenType.Semicolon, "Expect ';' after 'for' condition.")
+    val post =
+      if (check(TokenType.RightParen)) null
+      else expression()
+    consume(TokenType.RightParen, "Expect ')' after 'for' clauses.")
+    var body = statement()
+    if (post != null)
+      body = Statement.Block(List(body, Statement.Expression(post)))
+    body = Statement.While(condition, body)
+    if (pre != null)
+      body = Statement.Block(List(pre, body))
+    body
+  }
+
+  private def whileStatement(): Statement = {
+    consume(TokenType.LeftParen, "Expect '(' after 'while'.")
+    val condition = expression()
+    consume(TokenType.RightParen, "Expect ')' after 'while' condition.")
+    val body = statement()
+    Statement.While(condition, body)
+  }
+
+  private def ifStatement(): Statement = {
+    consume(TokenType.LeftParen, "Expect '(' after 'if'.")
+    val condition = expression()
+    consume(TokenType.RightParen, "Expect ')' after 'if' condition.")
+    val thenBranch = statement()
+    val elseBranch = if (matching(TokenType.Else)) statement() else null
+    Statement.If(condition, thenBranch, elseBranch)
+  }
 
   private def block(): List[Statement] = {
     val statements = List.newBuilder[Statement]
@@ -68,7 +112,7 @@ final class Parser(tokens: List[Token]) {
   private def expression(): Expr = assignment()
 
   private def assignment(): Expr = {
-    val expr = equality()
+    val expr = or()
 
     if (matching(TokenType.Equal)) {
       val equals = previous()
@@ -77,6 +121,30 @@ final class Parser(tokens: List[Token]) {
         case Expr.Variable(name) => return Expr.Assign(name, value)
         case _ => error(equals, "Invalid assignment target.")
       }
+    }
+
+    expr
+  }
+
+  private def or(): Expr = {
+    var expr: Expr = and()
+
+    while (matching(TokenType.Or)) {
+      val operator: Token = previous()
+      val right: Expr = and()
+      expr = Expr.Logical(expr, operator, right)
+    }
+
+    expr
+  }
+
+  private def and(): Expr = {
+    var expr: Expr = equality()
+
+    while (matching(TokenType.And)) {
+      val operator: Token = previous()
+      val right: Expr = equality()
+      expr = Expr.Logical(expr, operator, right)
     }
 
     expr

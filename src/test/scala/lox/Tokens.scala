@@ -28,5 +28,11 @@ object Tokens {
   val LeftBrace: Token = Token(TokenType.LeftBrace, "{", null, 1)
   val RightBrace: Token = Token(TokenType.RightBrace, "}", null, 1)
   val Print: Token = Token(TokenType.Print, "print", null, 1)
+  var And: Token = Token(TokenType.And, "and", null, 1)
+  var Or: Token = Token(TokenType.Or, "or", null, 1)
+  var If: Token = Token(TokenType.If, "if", null, 1)
+  var Else: Token = Token(TokenType.Else, "else", null, 1)
+  val While: Token = Token(TokenType.While, "while", null, 1)
+  val For: Token = Token(TokenType.For, "for", null, 1)
 
 }

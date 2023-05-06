@@ -47,6 +47,28 @@ final class Interpreter extends Expr.Visitor[Any] with Statement.Visitor[Any] {
     null
   }
 
+  override def visitLogical(logical: Expr.Logical): Any = {
+    logical.operator.tokenType match {
+      case TokenType.And =>
+        isTruthy(evaluate(logical.left)) && isTruthy(evaluate(logical.right))
+      case TokenType.Or =>
+        isTruthy(evaluate(logical.left)) || isTruthy(evaluate(logical.right))
+    }
+  }
+
+  override def visitIf(ifStatement: Statement.If): Any =
+    if (isTruthy(evaluate(ifStatement.condition)))
+      execute(ifStatement.thenBranch)
+    else if (ifStatement.elseBranch != null)
+      execute(ifStatement.elseBranch)
+
+  override def visitWhile(whileLoop: Statement.While): Any = {
+    while (isTruthy(evaluate(whileLoop.condition))) {
+      execute(whileLoop.body)
+    }
+    null
+  }
+
   override def visitPrint(print: Statement.Print): Any = {
     val value = evaluate(print.expression)
     println(stringify(value))
