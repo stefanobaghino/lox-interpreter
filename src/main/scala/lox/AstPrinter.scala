@@ -14,6 +14,9 @@ final class AstPrinter extends Expr.Visitor[String] {
   override def visitLiteral(literal: Expr.Literal): String =
     if (literal == null) "nil" else literal.value.toString
 
+  override def visitLogical(logical: Expr.Logical): String =
+    s"${parenthesize(logical.operator.lexeme, logical.left, logical.right)}"
+
   override def visitUnary(unary: Expr.Unary): String =
     s"${parenthesize(unary.operator.lexeme, unary.right)}"
 

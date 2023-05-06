@@ -15,6 +15,7 @@ object Expr {
     def visitBinary(binary: Binary): A
     def visitGrouping(grouping: Grouping): A
     def visitLiteral(literal: Literal): A
+    def visitLogical(logical: Logical): A
     def visitUnary(unary: Unary): A
     def visitVariableLookup(variable: Variable): A
   }
@@ -34,6 +35,11 @@ object Expr {
 
   final case class Literal(value: Any) extends Expr {
     override def accept[A](visitor: Visitor[A]): A = visitor.visitLiteral(this)
+  }
+
+  final case class Logical(left: Expr, operator: Token, right: Expr)
+      extends Expr {
+    override def accept[A](visitor: Visitor[A]): A = visitor.visitLogical(this)
   }
 
   final case class Unary(operator: Token, right: Expr) extends Expr {
