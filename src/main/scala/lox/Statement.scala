@@ -12,7 +12,9 @@ object Statement {
     def visitBlock(block: Block): A
     def visitIf(ifStatement: If): A
     def visitExpression(expr: Expression): A
+    def visitFun(fun: Fun): A
     def visitPrint(print: Print): A
+    def visitReturn(ret: Return): A
     def visitVariableDeclaration(variable: Variable): A
     def visitWhile(whileLoop: While): A
   }
@@ -25,6 +27,11 @@ object Statement {
     override def accept[A](visitor: Visitor[A]): A =
       visitor.visitExpression(this)
   }
+  final case class Fun(name: Token, params: List[Token], body: List[Statement])
+      extends Statement {
+    override def accept[A](visitor: Visitor[A]): A =
+      visitor.visitFun(this)
+  }
   final case class If(
       condition: Expr,
       thenBranch: Statement,
@@ -36,6 +43,10 @@ object Statement {
   final case class Print(expression: Expr) extends Statement {
     override def accept[A](visitor: Visitor[A]): A =
       visitor.visitPrint(this)
+  }
+  final case class Return(keyword: Token, value: Expr) extends Statement {
+    override def accept[A](visitor: Visitor[A]): A =
+      visitor.visitReturn(this)
   }
   final case class Variable(name: Token, initializer: Expr) extends Statement {
     override def accept[A](visitor: Visitor[A]): A =

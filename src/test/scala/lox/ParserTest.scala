@@ -585,4 +585,35 @@ final class ParserTest extends munit.FunSuite {
 
   }
 
+  test("fun a(a) { return 1; }") {
+    val statements = new Parser(
+      List(
+        Tokens.Fun,
+        Tokens.Identifier,
+        Tokens.LeftParen,
+        Tokens.Identifier,
+        Tokens.RightParen,
+        Tokens.LeftBrace,
+        Tokens.Return,
+        Tokens.Number,
+        Tokens.Semicolon,
+        Tokens.RightBrace,
+        Tokens.Eof,
+      )
+    ).parse()
+
+    val expected =
+      List(
+        Statement.Fun(
+          Tokens.Identifier,
+          List(Tokens.Identifier),
+          List(
+            Statement.Return(Tokens.Return, Expr.Literal(1.0))
+          ),
+        )
+      )
+
+    assertEquals(statements, expected)
+  }
+
 }

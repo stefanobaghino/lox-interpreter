@@ -273,4 +273,88 @@ final class InterpreterTest extends munit.FunSuite {
     assertEquals(a, 11.0)
   }
 
+  test("var a = 1; a();") {
+    val interpreter = new Interpreter
+    val statements =
+      List(
+        Statement.Variable(Tokens.Identifier, Expr.Literal(1.0)),
+        Statement.Expression(
+          Expr.Call(
+            Expr.Variable(Tokens.Identifier),
+            Tokens.LeftParen,
+            List.empty,
+          )
+        ),
+      )
+
+    val error =
+      intercept[Interpreter.Error] {
+        for (statement <- statements) {
+          statement.accept(interpreter)
+        }
+      }
+
+    assertEquals(error.token, Tokens.LeftParen)
+  }
+
+  test("fun a(a) { } a();") {
+    val interpreter = new Interpreter
+    val statements =
+      List(
+        Statement.Fun(
+          Tokens.Identifier,
+          List(Tokens.Identifier),
+          List.empty,
+        ),
+        Statement.Expression(
+          Expr.Call(
+            Expr.Variable(Tokens.Identifier),
+            Tokens.LeftParen,
+            List.empty,
+          )
+        ),
+      )
+
+    val error =
+      intercept[Interpreter.Error] {
+        for (statement <- statements) {
+          statement.accept(interpreter)
+        }
+      }
+
+    assertEquals(error.token, Tokens.LeftParen)
+  }
+
+  test("fun a() { return 1; } a = a();") {
+
+    val interpreter = new Interpreter
+    val statements =
+      List(
+        Statement.Fun(
+          Tokens.Identifier,
+          List.empty,
+          List(
+            Statement.Return(Tokens.Return, Expr.Literal(1.0))
+          ),
+        ),
+        Statement.Expression(
+          Expr.Assign(
+            Tokens.Identifier,
+            Expr.Call(
+              Expr.Variable(Tokens.Identifier),
+              Tokens.LeftParen,
+              List.empty,
+            ),
+          )
+        ),
+      )
+
+    interpreter.interpret(statements)
+
+    val a =
+      Expr.Variable(Tokens.Identifier).accept(interpreter).asInstanceOf[Double]
+
+    assertEquals(a, 1.0)
+  }
+
 }

@@ -18,13 +18,34 @@ final class Parser(tokens: List[Token]) {
 
   private def declaration(): Statement =
     try {
-      if (matching(TokenType.Var)) variableDeclaration()
+      if (matching(TokenType.Fun)) functionDeclaration("function")
+      else if (matching(TokenType.Var)) variableDeclaration()
       else statement()
     } catch {
       case _: Parser.Error =>
         synchronize()
         null
     }
+
+  private def functionDeclaration(kind: String): Statement = {
+    val name: Token = consume(TokenType.Identifier, s"Expect $kind name.")
+    consume(TokenType.LeftParen, s"Expect '(' after $kind name.")
+    val parameters = List.newBuilder[Token]
+    var parametersNumber = 0
+    if (!check(TokenType.RightParen)) {
+      do {
+        if (parametersNumber >= 255) {
+          error(peek(), "Can't have more than 255 parameters.")
+        }
+        parameters += consume(TokenType.Identifier, "Expect parameter name.")
+        parametersNumber += 1
+      } while (matching(TokenType.Comma))
+
+    }
+    consume(TokenType.RightParen, "Expect ')' after parameters.")
+    consume(TokenType.LeftBrace, "Expect '{' before " + kind + " body.")
+    Statement.Fun(name, parameters.result(), block())
+  }
 
   private def variableDeclaration(): Statement = {
     val name: Token = consume(TokenType.Identifier, "Expect variable name.")
@@ -43,6 +64,7 @@ final class Parser(tokens: List[Token]) {
     if (matching(TokenType.For)) forStatement()
     else if (matching(TokenType.If)) ifStatement()
     else if (matching(TokenType.Print)) printStatement()
+    else if (matching(TokenType.Return)) returnStatement()
     else if (matching(TokenType.While)) whileStatement()
     else if (matching(TokenType.LeftBrace)) Statement.Block(block())
     else expressionStatement()
@@ -101,6 +123,13 @@ final class Parser(tokens: List[Token]) {
     val value = expression()
     consume(TokenType.Semicolon, "Expect ';' after value.")
     Statement.Print(value)
+  }
+
+  private def returnStatement(): Statement.Return = {
+    val keyword: Token = previous()
+    val value: Expr = if (check(TokenType.Semicolon)) null else expression()
+    consume(TokenType.Semicolon, "Expect ';' after return value.")
+    Statement.Return(keyword, value)
   }
 
   private def expressionStatement(): Statement.Expression = {
@@ -200,11 +229,37 @@ final class Parser(tokens: List[Token]) {
   private def unary(): Expr = {
     if (matching(TokenType.Bang, TokenType.Minus)) {
       val operator: Token = previous()
-      val right: Expr = primary()
+      val right: Expr = call()
       Expr.Unary(operator, right)
     } else {
-      primary()
+      call()
     }
+  }
+
+  private def call(): Expr = {
+    var expr = primary()
+
+    while (matching(TokenType.LeftParen)) {
+      expr = finishCall(expr)
+    }
+
+    expr
+  }
+
+  private def finishCall(callee: Expr): Expr = {
+    val arguments = List.newBuilder[Expr]
+    var argumentsNumber = 0
+    if (!check(TokenType.RightParen)) {
+      do {
+        arguments += expression()
+        argumentsNumber += 1
+        if (argumentsNumber >= 255) {
+          error(peek(), "Can't have more than 255 arguments.")
+        }
+      } while (matching(TokenType.Comma))
+    }
+    val paren = consume(TokenType.RightParen, "Expect ')' after arguments.")
+    Expr.Call(callee, paren, arguments.result())
   }
 
   private def primary(): Expr = {

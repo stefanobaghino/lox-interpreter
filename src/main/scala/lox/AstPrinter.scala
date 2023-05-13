@@ -8,6 +8,9 @@ final class AstPrinter extends Expr.Visitor[String] {
   override def visitBinary(binary: Expr.Binary): String =
     s"${parenthesize(binary.operator.lexeme, binary.left, binary.right)}"
 
+  override def visitCall(call: Expr.Call): String =
+    s"${parenthesize("call", call.callee +: call.arguments: _*)}"
+
   override def visitGrouping(grouping: Expr.Grouping): String =
     s"${parenthesize("group", grouping.expression)}"
 

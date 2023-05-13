@@ -13,6 +13,7 @@ object Expr {
   trait Visitor[A] {
     def visitAssign(assign: Assign): A
     def visitBinary(binary: Binary): A
+    def visitCall(call: Call): A
     def visitGrouping(grouping: Grouping): A
     def visitLiteral(literal: Literal): A
     def visitLogical(logical: Logical): A
@@ -27,6 +28,11 @@ object Expr {
   final case class Binary(left: Expr, operator: Token, right: Expr)
       extends Expr {
     override def accept[A](visitor: Visitor[A]): A = visitor.visitBinary(this)
+  }
+
+  final case class Call(callee: Expr, paren: Token, arguments: List[Expr])
+      extends Expr {
+    override def accept[A](visitor: Visitor[A]): A = visitor.visitCall(this)
   }
 
   final case class Grouping(expression: Expr) extends Expr {
