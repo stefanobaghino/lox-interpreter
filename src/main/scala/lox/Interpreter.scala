@@ -5,11 +5,18 @@ object Interpreter {
   final case class Error(token: Token, message: String)
       extends RuntimeException(message)
 
+  final case class Return(value: Any)
+      extends RuntimeException(null, null, false, false)
+
 }
 
 final class Interpreter extends Expr.Visitor[Any] with Statement.Visitor[Any] {
 
-  private var environment = new Environment
+  val globals = new Environment
+
+  globals.define("clock", Callable.Natives.Clock)
+
+  private var environment = globals
 
   def interpret(statements: List[Statement]): Unit =
     try {
@@ -24,7 +31,7 @@ final class Interpreter extends Expr.Visitor[Any] with Statement.Visitor[Any] {
   private def execute(statement: Statement): Unit =
     statement.accept(this)
 
-  private def executeBlock(
+  def executeBlock(
       value: List[Statement],
       environment: Environment,
   ): Unit = {
@@ -46,6 +53,16 @@ final class Interpreter extends Expr.Visitor[Any] with Statement.Visitor[Any] {
     evaluate(expr.expression)
     null
   }
+
+  override def visitFun(fun: Statement.Fun): Any = {
+    environment.define(fun.name.lexeme, new Callable.Fun(fun, environment))
+    null
+  }
+
+  override def visitReturn(ret: Statement.Return): Any =
+    throw Interpreter.Return(
+      if (ret.value != null) evaluate(ret.value) else null
+    )
 
   override def visitLogical(logical: Expr.Logical): Any = {
     logical.operator.tokenType match {
@@ -131,6 +148,23 @@ final class Interpreter extends Expr.Visitor[Any] with Statement.Visitor[Any] {
         null // unreachable
     }
 
+  }
+
+  override def visitCall(call: Expr.Call): Any = {
+    evaluate(call.callee) match {
+      case callable: Callable if call.arguments.size == callable.arity =>
+        callable.call(this, call.arguments.map(evaluate))
+      case callable: Callable =>
+        throw Interpreter.Error(
+          call.paren,
+          s"Expected ${callable.arity} arguments but got ${call.arguments.size}.",
+        )
+      case _ =>
+        throw Interpreter.Error(
+          call.paren,
+          "Can only call functions and classes.",
+        )
+    }
   }
 
   override def visitGrouping(grouping: Expr.Grouping): Any =

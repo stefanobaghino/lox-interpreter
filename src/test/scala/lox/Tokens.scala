@@ -34,5 +34,7 @@ object Tokens {
   var Else: Token = Token(TokenType.Else, "else", null, 1)
   val While: Token = Token(TokenType.While, "while", null, 1)
   val For: Token = Token(TokenType.For, "for", null, 1)
+  val Fun: Token = Token(TokenType.Fun, "fun", null, 1)
+  val Return: Token = Token(TokenType.Return, "return", null, 1)
 
 }
