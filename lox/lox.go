@@ -3,6 +3,7 @@ package lox
 import (
 	"bufio"
 	"fmt"
+	"io"
 	"log"
 	"os"
 )
@@ -25,11 +26,10 @@ func RunPrompt() {
 	for {
 		fmt.Print("> ")
 		line, err := reader.ReadString('\n')
-		if err != nil {
-			panic(err)
-		}
-		if len(line) == 0 {
+		if err == io.EOF {
 			break
+		} else if err != nil {
+			panic(err)
 		}
 		run(line)
 		hadError = false
