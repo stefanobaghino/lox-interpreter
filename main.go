@@ -1,7 +1,18 @@
 package main
 
-import "fmt"
+import (
+	"fmt"
+	"lox/lox"
+	"os"
+)
 
 func main() {
-	fmt.Println("hello, world")
+	if len(os.Args) > 1 {
+		fmt.Println("Usage: lox [script]")
+		os.Exit(64)
+	} else if len(os.Args) == 1 {
+		lox.RunFile(os.Args[0])
+	} else {
+		lox.RunPrompt()
+	}
 }
