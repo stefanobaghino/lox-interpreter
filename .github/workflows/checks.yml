@@ -21,4 +21,4 @@ jobs:
       with:
         direnvVersion: 2.32.1
     - name: Run checks
-      run: go test
+      run: go test ./...
