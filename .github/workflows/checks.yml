@@ -20,5 +20,17 @@ jobs:
     - uses: HatsuneMiku3939/direnv-action@v1
       with:
         direnvVersion: 2.32.1
+    - uses: actions/cache@v3
+      with:
+        path: /nix
+        key: ${{ runner.os }}-nix-${{ hashFiles('**/flake.nix') }}
+        restore-keys: |
+          ${{ runner.os }}-nix-
+    - uses: actions/cache@v3
+      with:
+        path: .direnv
+        key: ${{ runner.os }}-direnv-${{ hashFiles('**/flake.nix', '**/go.mod') }}
+        restore-keys: |
+          ${{ runner.os }}-direnv-
     - name: Run checks
       run: go test ./...
