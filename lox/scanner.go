@@ -154,7 +154,6 @@ func (s *Scanner) num() (Token, error) {
 		}
 	}
 	if x, err := strconv.ParseFloat(string(s.source[s.start:s.current]), 64); err != nil {
-
 		return s.mkToken(ERROR), &syntaxError{s.line, "Invalid number."}
 	} else {
 		return s.mkLiteral(NUMBER, x), nil
@@ -228,7 +227,11 @@ func (s *Scanner) lookahead(n int) ([]rune, int, error) {
 }
 
 func (s *Scanner) peekAhead(offset int) (rune, int, error) {
-	r, sz := utf8.DecodeRune(s.source[s.current+offset:])
+	o := s.current + offset
+	if o >= len(s.source) {
+		return utf8.RuneError, 0, nil
+	}
+	r, sz := utf8.DecodeRune(s.source[o:])
 	if r == utf8.RuneError && sz == 1 {
 		s.broken = true
 		return r, 1, &syntaxError{s.line, "Invalid UTF-8 sequence."}
