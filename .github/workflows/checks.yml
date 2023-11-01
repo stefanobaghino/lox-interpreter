@@ -22,15 +22,15 @@ jobs:
         direnvVersion: 2.32.1
     - uses: actions/cache@v3
       with:
-        path: /nix
+        path: /nix/store
         key: ${{ runner.os }}-nix-${{ hashFiles('**/flake.nix') }}
         restore-keys: |
           ${{ runner.os }}-nix-
     - uses: actions/cache@v3
       with:
-        path: .direnv
-        key: ${{ runner.os }}-direnv-${{ hashFiles('**/flake.nix', '**/go.mod') }}
+        path: .direnv/go
+        key: ${{ runner.os }}-go-${{ hashFiles('**/go.mod') }}
         restore-keys: |
-          ${{ runner.os }}-direnv-
+          ${{ runner.os }}-go-
     - name: Run checks
       run: go test ./...
