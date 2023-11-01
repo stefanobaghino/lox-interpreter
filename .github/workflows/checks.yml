@@ -14,21 +14,23 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
     - uses: actions/checkout@v3.5.2
+    - uses: cachix/install-nix-action@v22
+      with:
+        github_access_token: ${{ secrets.GITHUB_TOKEN }}
     - uses: actions/cache@v3
+      name: nix store cache
       with:
         path: /nix/store
         key: ${{ runner.os }}-nix-${{ hashFiles('**/flake.nix') }}
         restore-keys: |
           ${{ runner.os }}-nix-
     - uses: actions/cache@v3
+      name: go modules cache
       with:
         path: .direnv/go
         key: ${{ runner.os }}-go-${{ hashFiles('**/go.mod') }}
         restore-keys: |
           ${{ runner.os }}-go-
-    - uses: cachix/install-nix-action@v22
-      with:
-        github_access_token: ${{ secrets.GITHUB_TOKEN }}
     - uses: HatsuneMiku3939/direnv-action@v1
       with:
         direnvVersion: 2.32.1
