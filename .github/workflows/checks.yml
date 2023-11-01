@@ -17,10 +17,9 @@ jobs:
     - uses: cachix/install-nix-action@v22
       with:
         github_access_token: ${{ secrets.GITHUB_TOKEN }}
-    - uses: actions/cache@v3
+    - uses: nix-community/cache-nix-action@v3
       with:
-        path: /nix/store/
-        key: ${{ runner.os }}-nix-${{ hashFiles('**/flake.nix') }}
+        key: ${{ runner.os }}-nix-${{ hashFiles('flake.nix') }}
         restore-keys: |
           ${{ runner.os }}-nix-
     - uses: HatsuneMiku3939/direnv-action@v1
