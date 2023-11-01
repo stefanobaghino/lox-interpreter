@@ -14,11 +14,13 @@
       {
         devShells.default = pkgs.mkShell {
           packages = [
+            pkgs.delve
             pkgs.go
-            pkgs.gotools
-            pkgs.gopls
             pkgs.godef
+            pkgs.gopls
+            pkgs.gotools
             pkgs.go-outline
+            pkgs.go-tools
           ];
         };
       }
