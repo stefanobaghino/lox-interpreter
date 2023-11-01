@@ -7,7 +7,7 @@ on:
     branches: [ "main" ]
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   build:
@@ -18,19 +18,11 @@ jobs:
       with:
         github_access_token: ${{ secrets.GITHUB_TOKEN }}
     - uses: actions/cache@v3
-      name: Cache Nix store
       with:
-        path: /nix/store
+        path: /nix/store/
         key: ${{ runner.os }}-nix-${{ hashFiles('**/flake.nix') }}
         restore-keys: |
           ${{ runner.os }}-nix-
-    - uses: actions/cache@v3
-      name: Cache Go modules
-      with:
-        path: .direnv/go
-        key: ${{ runner.os }}-go-${{ hashFiles('**/go.mod') }}
-        restore-keys: |
-          ${{ runner.os }}-go-
     - uses: HatsuneMiku3939/direnv-action@v1
       with:
         direnvVersion: 2.32.1
