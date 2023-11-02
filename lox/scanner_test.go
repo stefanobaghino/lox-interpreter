@@ -1,23 +1,27 @@
 package lox
 
-import "testing"
+import (
+	"bufio"
+	"strings"
+	"testing"
+)
 
 func TestScannerEmpty(t *testing.T) {
-	src := []byte("")
-	s := NewScanner(src)
+	src := ""
+	s := NewScanner(bufio.NewReader(strings.NewReader(src)))
 	expectTokenType(t, expectNext(t, s), EOF)
 }
 
 func TestScannerError(t *testing.T) {
-	src := []byte("#")
-	s := NewScanner(src)
+	src := "#"
+	s := NewScanner(bufio.NewReader(strings.NewReader(src)))
 	expectErrorMessage(t, expectSyntaxError(t, s), "Unexpected character.")
 	expectTokenType(t, expectNext(t, s), EOF)
 }
 
 func TestScannerErrorKeepsGoing(t *testing.T) {
-	src := []byte("#\n#kbye")
-	s := NewScanner(src)
+	src := "#\n#kbye"
+	s := NewScanner(bufio.NewReader(strings.NewReader(src)))
 	expectErrorMessage(t, expectSyntaxError(t, s), "Unexpected character.")
 	expectErrorMessage(t, expectSyntaxError(t, s), "Unexpected character.")
 	expectIdentifier(t, expectNext(t, s), "kbye")
@@ -25,17 +29,17 @@ func TestScannerErrorKeepsGoing(t *testing.T) {
 }
 
 func TestScannerNumberTooBig(t *testing.T) {
-	src := make([]byte, 400)
-	for i := range src {
-		src[i] = '9'
+	src := strings.Builder{}
+	for i := 0; i < 1000; i++ {
+		src.WriteRune('9')
 	}
-	s := NewScanner(src)
+	s := NewScanner(bufio.NewReader(strings.NewReader(src.String())))
 	expectErrorMessage(t, expectSyntaxError(t, s), "Invalid number.")
 }
 
 func TestScannerSimpleTokens(t *testing.T) {
-	src := []byte("(){},.+-;*")
-	s := NewScanner(src)
+	src := "(){},.+-;*"
+	s := NewScanner(bufio.NewReader(strings.NewReader(src)))
 	expectTokenType(t, expectNext(t, s), LEFT_PAREN)
 	expectTokenType(t, expectNext(t, s), RIGHT_PAREN)
 	expectTokenType(t, expectNext(t, s), LEFT_BRACE)
@@ -50,10 +54,11 @@ func TestScannerSimpleTokens(t *testing.T) {
 }
 
 func TestScannerWhiteSpaceAndComplexTokens(t *testing.T) {
-	s := NewScanner([]byte(`
+	src := `
       == != <= >= // comment
       = ! < > // another comment
-      1	/	2 // and another one`))
+      1	/	2 // and another one`
+	s := NewScanner(bufio.NewReader(strings.NewReader(src)))
 	expectTokenType(t, expectNext(t, s), EQUAL_EQUAL)
 	expectTokenType(t, expectNext(t, s), BANG_EQUAL)
 	expectTokenType(t, expectNext(t, s), LESS_EQUAL)
@@ -69,7 +74,8 @@ func TestScannerWhiteSpaceAndComplexTokens(t *testing.T) {
 }
 
 func TestScannerNumbers(t *testing.T) {
-	s := NewScanner([]byte("123 123.456 0.456"))
+	src := "123 123.456 0.456"
+	s := NewScanner(bufio.NewReader(strings.NewReader(src)))
 	expectNumberLiteral(t, expectNext(t, s), 123)
 	expectNumberLiteral(t, expectNext(t, s), 123.456)
 	expectNumberLiteral(t, expectNext(t, s), 0.456)
@@ -77,14 +83,16 @@ func TestScannerNumbers(t *testing.T) {
 }
 
 func TestScannerStrings(t *testing.T) {
-	s := NewScanner([]byte(`"hello" "world"`))
+	src := `"hello" "world"`
+	s := NewScanner(bufio.NewReader(strings.NewReader(src)))
 	expectStringLiteral(t, expectNext(t, s), "hello")
 	expectStringLiteral(t, expectNext(t, s), "world")
 	expectTokenType(t, expectNext(t, s), EOF)
 }
 
 func TestScannerIdentifiers(t *testing.T) {
-	s := NewScanner([]byte(`hello world`))
+	src := `hello world`
+	s := NewScanner(bufio.NewReader(strings.NewReader(src)))
 	expectIdentifier(t, expectNext(t, s), "hello")
 	expectIdentifier(t, expectNext(t, s), "world")
 	expectTokenType(t, expectNext(t, s), EOF)

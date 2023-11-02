@@ -1,18 +1,20 @@
 package lox
 
 import (
+	"bufio"
+	"errors"
 	"fmt"
+	"io"
 	"strconv"
 	"unicode"
 	"unicode/utf8"
 )
 
 type Scanner struct {
-	source  []byte
-	start   int
+	reader  *bufio.Reader
+	chars   []rune
 	current int
 	line    int
-	broken  bool
 }
 
 type syntaxError struct {
@@ -24,219 +26,164 @@ func (e syntaxError) Error() string {
 	return fmt.Sprintf("syntax error on line %d: %s", e.line, e.message)
 }
 
-func NewScanner(source []byte) *Scanner {
-	return &Scanner{source: source, line: 1}
+func NewScanner(reader *bufio.Reader) *Scanner {
+	return &Scanner{reader: reader, line: 1}
 }
 
 func (s *Scanner) NextToken() (Token, error) {
 next:
-	s.start = s.current
-
-	r, err := s.advance()
-	if r == utf8.RuneError {
-		return s.mkToken(EOF), err
-	}
-	switch r {
-	case '(':
+	s.chars = s.chars[s.current:]
+	s.current = 0
+	r := s.advance()
+	switch {
+	case r == utf8.RuneError:
+		return s.mkToken(EOF), nil
+	case r == '(':
 		return s.mkToken(LEFT_PAREN), nil
-	case ')':
+	case r == ')':
 		return s.mkToken(RIGHT_PAREN), nil
-	case '{':
+	case r == '{':
 		return s.mkToken(LEFT_BRACE), nil
-	case '}':
+	case r == '}':
 		return s.mkToken(RIGHT_BRACE), nil
-	case ',':
+	case r == ',':
 		return s.mkToken(COMMA), nil
-	case '.':
+	case r == '.':
 		return s.mkToken(DOT), nil
-	case '-':
+	case r == '-':
 		return s.mkToken(MINUS), nil
-	case '+':
+	case r == '+':
 		return s.mkToken(PLUS), nil
-	case ';':
+	case r == ';':
 		return s.mkToken(SEMICOLON), nil
-	case '*':
+	case r == '*':
 		return s.mkToken(STAR), nil
-	case '!':
-		match, err := s.match('=')
-		if err != nil {
-			return s.mkToken(ERROR), err
-		}
-		if match {
+	case r == '!':
+		if s.match('=') {
 			return s.mkToken(BANG_EQUAL), nil
 		} else {
 			return s.mkToken(BANG), nil
 		}
-	case '=':
-		match, err := s.match('=')
-		if err != nil {
-			return s.mkToken(ERROR), err
-		}
-		if match {
+	case r == '=':
+		if s.match('=') {
 			return s.mkToken(EQUAL_EQUAL), nil
 		} else {
 			return s.mkToken(EQUAL), nil
 		}
-	case '<':
-		match, err := s.match('=')
-		if err != nil {
-			return s.mkToken(ERROR), err
-		}
-		if match {
+	case r == '<':
+		if s.match('=') {
 			return s.mkToken(LESS_EQUAL), nil
 		} else {
 			return s.mkToken(LESS), nil
 		}
-	case '>':
-		match, err := s.match('=')
-		if err != nil {
-			return s.mkToken(ERROR), err
-		}
-		if match {
+	case r == '>':
+		if s.match('=') {
 			return s.mkToken(GREATER_EQUAL), nil
 		} else {
 			return s.mkToken(GREATER), nil
 		}
-	case '/':
-		match, err := s.match('/')
-		if err != nil {
-			return s.mkToken(ERROR), err
-		}
-		if match {
+	case r == '/':
+		if s.match('/') {
 			s.skipUntil(func(r rune) bool { return r == '\n' })
 			goto next
 		} else {
 			return s.mkToken(SLASH), nil
 		}
-	case '\n':
-		s.line++
-		goto next
-	case ' ':
-		goto next
-	case '\r':
-		goto next
-	case '\t':
-		goto next
-	case '"':
-		return s.str()
-	default:
-		if unicode.IsDigit(r) {
-			return s.num()
-		} else if unicode.IsLetter(r) {
-			return s.id()
+	case unicode.IsSpace(r):
+		if r == '\n' {
+			s.line += 1
 		}
+		goto next
+	case r == '"':
+		return s.str(), nil
+	case unicode.IsDigit(r):
+		return s.num()
+	case unicode.IsLetter(r):
+		return s.id(), nil
+	default:
+		return s.mkToken(ERROR), &syntaxError{s.line, "Unexpected character."}
 	}
-	return s.mkToken(ERROR), &syntaxError{s.line, "Unexpected character."}
 }
 
-func (s *Scanner) id() (Token, error) {
-	if err := s.skipUntil(func(r rune) bool { return !unicode.IsDigit(r) && !unicode.IsLetter(r) }); err != nil {
-		return s.mkToken(ERROR), err
-	}
-	t, ok := keywords[string(s.source[s.start:s.current])]
+func (s *Scanner) id() Token {
+	s.skipUntil(func(r rune) bool { return !unicode.IsDigit(r) && !unicode.IsLetter(r) })
+	t, ok := keywords[string(s.chars[:s.current])]
 	if !ok {
 		t = IDENTIFIER
 	}
-	return s.mkToken(t), nil
+	return s.mkToken(t)
 }
 
 func (s *Scanner) num() (Token, error) {
-	if err := s.skipUntil(func(r rune) bool { return !unicode.IsDigit(r) }); err != nil {
-		return s.mkToken(ERROR), err
-	}
+	s.skipUntil(func(r rune) bool { return !unicode.IsDigit(r) })
 	// Look for a fractional part.
-	if rs, _, err := s.lookahead(2); err != nil {
-		return s.mkToken(ERROR), err
-	} else if len(rs) == 2 && rs[0] == '.' && unicode.IsDigit(rs[1]) {
-		s.current += 1 // '.' is one byte, move past it
-		if err := s.skipUntil(func(r rune) bool { return !unicode.IsDigit(r) }); err != nil {
-			return s.mkToken(ERROR), err
-		}
+	if unicode.IsDigit(s.readRuneAhead(1)) && s.readRune() == '.' {
+		s.current += 1 // skip the dot
+		s.skipUntil(func(r rune) bool { return !unicode.IsDigit(r) })
 	}
-	if x, err := strconv.ParseFloat(string(s.source[s.start:s.current]), 64); err != nil {
+	if x, err := strconv.ParseFloat(string(s.chars[:s.current]), 64); err != nil {
 		return s.mkToken(ERROR), &syntaxError{s.line, "Invalid number."}
 	} else {
 		return s.mkLiteral(NUMBER, x), nil
 	}
 }
 
-func (s *Scanner) str() (Token, error) {
-	s.current += 1 // '"' is one byte, move past it
-	if err := s.skipUntil(func(r rune) bool { return r == '"' }); err != nil {
-		return s.mkToken(ERROR), err
-	}
-	value := string(s.source[s.start+1 : s.current])
+func (s *Scanner) str() Token {
+	s.current += 1 // skip the opening quote
+	s.skipUntil(func(r rune) bool { return r == '"' })
+	value := string(s.chars[1:s.current])
 	s.current += 1 // skip the closing quote
-	return s.mkLiteral(STRING, value), nil
+	return s.mkLiteral(STRING, value)
 }
 
-func (s *Scanner) match(expected rune) (bool, error) {
-	r, sz, err := s.peek()
-	if err != nil {
-		return false, err
-	}
+func (s *Scanner) match(expected rune) bool {
+	r := s.readRune()
 	if r != expected {
-		return false, nil
+		return false
 	}
-	s.current += sz
-	return true, nil
+	s.current += 1
+	return true
 }
 
-func (s *Scanner) advance() (rune, error) {
-	r, sz, err := s.peek()
-	if err != nil {
-		return r, err
+func (s *Scanner) advance() rune {
+	r := s.readRune()
+	if r != utf8.RuneError {
+		s.current += 1
 	}
-	s.current += sz
-	return r, nil
+	return r
 }
 
-func (s *Scanner) skipUntil(p func(rune) bool) error {
+func (s *Scanner) skipUntil(p func(rune) bool) {
 	for {
-		r, sz, err := s.peek()
+		r := s.readRune()
+		if r == utf8.RuneError || p(r) {
+			break
+		}
+		s.current += 1
+	}
+}
+
+func (s *Scanner) readRune() rune {
+	return s.readRuneAhead(0)
+}
+
+func (s *Scanner) readRuneAhead(offset int) rune {
+	offset += s.current
+	for d := offset - len(s.chars) + 1; d > 0; d-- {
+		r, sz, err := s.reader.ReadRune()
+		if r == utf8.RuneError && sz == 1 {
+			panic(errors.New("invalid UTF-8 sequence"))
+		}
 		if err != nil {
-			return err
+			if err == io.EOF {
+				s.chars = append(s.chars, utf8.RuneError)
+			} else {
+				panic(err)
+			}
 		}
-		if sz == 0 {
-			break
-		}
-		if p(r) {
-			break
-		}
-		s.current += sz
+		s.chars = append(s.chars, r)
 	}
-	return nil
-}
-
-func (s *Scanner) peek() (rune, int, error) {
-	return s.peekAhead(0)
-}
-
-func (s *Scanner) lookahead(n int) ([]rune, int, error) {
-	rs := make([]rune, 0, n)
-	read := 0
-	for i := 0; i < n; i++ {
-		r, sz, err := s.peekAhead(read)
-		read += sz
-		if err != nil || sz == 0 {
-			return nil, read, err
-		}
-		rs = append(rs, r)
-	}
-	return rs, read, nil
-}
-
-func (s *Scanner) peekAhead(offset int) (rune, int, error) {
-	o := s.current + offset
-	if o >= len(s.source) {
-		return utf8.RuneError, 0, nil
-	}
-	r, sz := utf8.DecodeRune(s.source[o:])
-	if r == utf8.RuneError && sz == 1 {
-		s.broken = true
-		return r, 1, &syntaxError{s.line, "Invalid UTF-8 sequence."}
-	}
-	return r, sz, nil
+	return s.chars[offset]
 }
 
 func (s *Scanner) mkToken(t TokenType) Token {
@@ -244,7 +191,7 @@ func (s *Scanner) mkToken(t TokenType) Token {
 }
 
 func (s *Scanner) mkLiteral(t TokenType, literal interface{}) Token {
-	lexeme := string(s.source[s.start:s.current])
+	lexeme := string(s.chars[:s.current])
 	return Token{Type: t, Lexeme: lexeme, Literal: literal, Line: s.line}
 }
 
