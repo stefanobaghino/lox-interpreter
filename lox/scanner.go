@@ -3,7 +3,6 @@ package lox
 import (
 	"bufio"
 	"errors"
-	"fmt"
 	"io"
 	"strconv"
 	"unicode"
@@ -15,15 +14,6 @@ type Scanner struct {
 	chars   []rune
 	current int
 	line    int
-}
-
-type syntaxError struct {
-	line    int
-	message string
-}
-
-func (e syntaxError) Error() string {
-	return fmt.Sprintf("syntax error on line %d: %s", e.line, e.message)
 }
 
 func NewScanner(reader *bufio.Reader) *Scanner {
@@ -106,7 +96,7 @@ func (s *Scanner) NextToken() (Token, error) {
 	case unicode.IsLetter(r):
 		return s.id(), nil
 	default:
-		return s.mkToken(ERROR), &syntaxError{s.line, "Unexpected character."}
+		return s.mkToken(ERROR), &syntaxError{s.line, "unexpected character"}
 	}
 }
 
@@ -127,7 +117,7 @@ func (s *Scanner) num() (Token, error) {
 		s.skipUntil(func(r rune) bool { return !unicode.IsDigit(r) })
 	}
 	if x, err := strconv.ParseFloat(string(s.chars[:s.current]), 64); err != nil {
-		return s.mkToken(ERROR), &syntaxError{s.line, "Invalid number."}
+		return s.mkToken(ERROR), &syntaxError{s.line, "invalid number"}
 	} else {
 		return s.mkLiteral(NUMBER, x), nil
 	}

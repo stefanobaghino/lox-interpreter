@@ -8,6 +8,15 @@ import (
 	"strings"
 )
 
+type syntaxError struct {
+	line    int
+	message string
+}
+
+func (e syntaxError) Error() string {
+	return fmt.Sprintf("syntax error on line %d: %s", e.line, e.message)
+}
+
 var hadError bool = false
 
 func RunFile(path string) {
@@ -39,16 +48,11 @@ func RunPrompt() {
 }
 
 func run(reader *bufio.Reader) {
-	s := NewScanner(reader)
-	for {
-		t, e := s.NextToken()
-		if e != nil {
-			fmt.Fprintln(os.Stderr, e.Error())
-			hadError = true
-		}
-		if t.Type == EOF {
-			break
-		}
-		fmt.Println(t)
+	p := NewParser(NewScanner(reader))
+	if expr, err := p.Parse(); err != nil {
+		fmt.Fprintln(os.Stderr, err.Error())
+		hadError = true
+	} else {
+		fmt.Println(expr.Accept(AstPrinter).(string))
 	}
 }

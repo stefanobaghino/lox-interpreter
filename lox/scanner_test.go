@@ -15,15 +15,15 @@ func TestScannerEmpty(t *testing.T) {
 func TestScannerError(t *testing.T) {
 	src := "#"
 	s := NewScanner(bufio.NewReader(strings.NewReader(src)))
-	expectErrorMessage(t, expectSyntaxError(t, s), "Unexpected character.")
+	expectErrorMessage(t, expectSyntaxError(t, s), "unexpected character")
 	expectTokenType(t, expectNext(t, s), EOF)
 }
 
 func TestScannerErrorKeepsGoing(t *testing.T) {
 	src := "#\n#kbye"
 	s := NewScanner(bufio.NewReader(strings.NewReader(src)))
-	expectErrorMessage(t, expectSyntaxError(t, s), "Unexpected character.")
-	expectErrorMessage(t, expectSyntaxError(t, s), "Unexpected character.")
+	expectErrorMessage(t, expectSyntaxError(t, s), "unexpected character")
+	expectErrorMessage(t, expectSyntaxError(t, s), "unexpected character")
 	expectIdentifier(t, expectNext(t, s), "kbye")
 	expectTokenType(t, expectNext(t, s), EOF)
 }
@@ -34,7 +34,7 @@ func TestScannerNumberTooBig(t *testing.T) {
 		src.WriteRune('9')
 	}
 	s := NewScanner(bufio.NewReader(strings.NewReader(src.String())))
-	expectErrorMessage(t, expectSyntaxError(t, s), "Invalid number.")
+	expectErrorMessage(t, expectSyntaxError(t, s), "invalid number")
 }
 
 func TestScannerSimpleTokens(t *testing.T) {
