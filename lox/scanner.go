@@ -31,7 +31,6 @@ func NewScanner(reader *bufio.Reader) *Scanner {
 }
 
 func (s *Scanner) NextToken() (Token, error) {
-next:
 	s.chars = s.chars[s.current:]
 	s.current = 0
 	r := s.advance()
@@ -85,7 +84,7 @@ next:
 	case r == '/':
 		if s.match('/') {
 			s.skipUntil(func(r rune) bool { return r == '\n' })
-			goto next
+			return s.NextToken()
 		} else {
 			return s.mkToken(SLASH), nil
 		}
@@ -93,7 +92,13 @@ next:
 		if r == '\n' {
 			s.line += 1
 		}
-		goto next
+		s.skipUntil(func(r rune) bool {
+			if r == '\n' {
+				s.line += 1
+			}
+			return !unicode.IsSpace(r)
+		})
+		return s.NextToken()
 	case r == '"':
 		return s.str(), nil
 	case unicode.IsDigit(r):
