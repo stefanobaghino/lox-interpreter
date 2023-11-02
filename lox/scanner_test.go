@@ -98,6 +98,25 @@ func TestScannerIdentifiers(t *testing.T) {
 	expectTokenType(t, expectNext(t, s), EOF)
 }
 
+func TestScannerLineNumbers(t *testing.T) {
+	src := `
+	2 2	
+
+	4	4 
+	5
+
+	7
+	`
+	s := NewScanner(bufio.NewReader(strings.NewReader(src)))
+	expectLineNumber(t, expectNext(t, s), 2)
+	expectLineNumber(t, expectNext(t, s), 2)
+	expectLineNumber(t, expectNext(t, s), 4)
+	expectLineNumber(t, expectNext(t, s), 4)
+	expectLineNumber(t, expectNext(t, s), 5)
+	expectLineNumber(t, expectNext(t, s), 7)
+	expectTokenType(t, expectNext(t, s), EOF)
+}
+
 func expectSyntaxError(t *testing.T, scanner *Scanner) *syntaxError {
 	t.Helper()
 	r, err := scanner.NextToken()
@@ -155,5 +174,12 @@ func expectIdentifier(t *testing.T, token Token, expected string) {
 	expectTokenType(t, token, IDENTIFIER)
 	if token.Lexeme != expected {
 		t.Errorf("expected identifier %s, got %v", expected, token.Lexeme)
+	}
+}
+
+func expectLineNumber(t *testing.T, token Token, expected int) {
+	t.Helper()
+	if token.Line != expected {
+		t.Errorf("expected line number %d, got %d", expected, token.Line)
 	}
 }
