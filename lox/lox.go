@@ -4,18 +4,20 @@ import (
 	"bufio"
 	"fmt"
 	"io"
-	"log"
 	"os"
+	"strings"
 )
 
 var hadError bool = false
 
 func RunFile(path string) {
-	bytes, err := os.ReadFile(path)
+	file, err := os.Open(path)
 	if err != nil {
-		log.Fatal(err)
+		fmt.Fprintln(os.Stderr, err.Error())
+		os.Exit(1)
 	}
-	run(string(bytes))
+	defer file.Close()
+	run(bufio.NewReader(file))
 	if hadError {
 		os.Exit(65)
 	}
@@ -31,13 +33,13 @@ func RunPrompt() {
 		} else if err != nil {
 			panic(err)
 		}
-		run(line)
+		run(bufio.NewReader(strings.NewReader(line)))
 		hadError = false
 	}
 }
 
-func run(source string) {
-	s := NewScanner([]byte(source))
+func run(reader *bufio.Reader) {
+	s := NewScanner(reader)
 	for {
 		t, e := s.NextToken()
 		if e != nil {
