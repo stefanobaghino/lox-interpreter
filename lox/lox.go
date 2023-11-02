@@ -18,6 +18,7 @@ func (e syntaxError) Error() string {
 }
 
 var hadError bool = false
+var hadRuntimeError bool = false
 
 func RunFile(path string) {
 	file, err := os.Open(path)
@@ -29,6 +30,9 @@ func RunFile(path string) {
 	run(bufio.NewReader(file))
 	if hadError {
 		os.Exit(65)
+	}
+	if hadRuntimeError {
+		os.Exit(70)
 	}
 }
 
@@ -50,9 +54,15 @@ func RunPrompt() {
 func run(reader *bufio.Reader) {
 	p := NewParser(NewScanner(reader))
 	if expr, err := p.Parse(); err != nil {
-		fmt.Fprintln(os.Stderr, err.Error())
+		fmt.Fprintf(os.Stderr, "%s\n", err.Error())
 		hadError = true
 	} else {
-		fmt.Println(expr.Accept(AstPrinter).(string))
+		res, err := NewInterpreter().Interpret(expr)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "%s\n", err.Error())
+			hadRuntimeError = true
+		} else {
+			fmt.Printf("%v\n", res)
+		}
 	}
 }
