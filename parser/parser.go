@@ -30,7 +30,7 @@ func NewParser(scanner *scanner.Scanner) *Parser {
 	return &Parser{scanner: scanner}
 }
 
-func (p *Parser) Parse() (expr ast.Expr, err error) {
+func (p *Parser) NextStatement() (stmt ast.Stmt, err error) {
 	defer func() {
 		if e := recover(); e != nil {
 			if se, ok := e.(lox.Error); ok {
@@ -40,8 +40,35 @@ func (p *Parser) Parse() (expr ast.Expr, err error) {
 			}
 		}
 	}()
-	expr = p.expression()
-	return
+	return p.statement(), nil
+}
+
+func (p *Parser) statement() ast.Stmt {
+	if p.oneOf(token.EOF) {
+		return p.endStatement()
+	}
+	if p.oneOf(token.PRINT) {
+		return p.printStatement()
+	}
+	return p.expressionStatement()
+}
+
+func (p *Parser) endStatement() ast.Stmt {
+	p.pop()
+	return &ast.EndStmt{}
+}
+
+func (p *Parser) printStatement() ast.Stmt {
+	p.pop()
+	expr := p.expression()
+	p.expect(token.SEMICOLON, "expected ';' after expression")
+	return &ast.PrintStmt{Expression: expr}
+}
+
+func (p *Parser) expressionStatement() ast.Stmt {
+	expr := p.expression()
+	p.expect(token.SEMICOLON, "expected ';' after expression")
+	return &ast.ExprStmt{Expression: expr}
 }
 
 func (p *Parser) expression() ast.Expr {

@@ -9,10 +9,6 @@ type ExprVisitor interface {
 	VisitUnaryExpr(*UnaryExpr) interface{}
 }
 
-func (e *BinaryExpr) Accept(v ExprVisitor) interface{} {
-	return v.VisitBinaryExpr(e)
-}
-
 type Expr interface {
 	Accept(ExprVisitor) interface{}
 }
@@ -21,6 +17,10 @@ type BinaryExpr struct {
 	Left     Expr
 	Operator token.Token
 	Right    Expr
+}
+
+func (e *BinaryExpr) Accept(v ExprVisitor) interface{} {
+	return v.VisitBinaryExpr(e)
 }
 
 type GroupingExpr struct {

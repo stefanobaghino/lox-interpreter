@@ -15,13 +15,15 @@ func (e RuntimeError) Error() string {
 	return fmt.Sprintf("runtime error on line %d: %s", e.line, e.message)
 }
 
-type Interpreter struct{}
+type Interpreter struct {
+	done bool
+}
 
 func NewInterpreter() *Interpreter {
 	return &Interpreter{}
 }
 
-func (i *Interpreter) Interpret(expr ast.Expr) (result interface{}, err error) {
+func (i *Interpreter) Interpret(stmt ast.Stmt) (result interface{}, err error) {
 
 	defer func() {
 		if e := recover(); e != nil {
@@ -33,9 +35,27 @@ func (i *Interpreter) Interpret(expr ast.Expr) (result interface{}, err error) {
 		}
 	}()
 
-	result = expr.Accept(i)
+	result = stmt.AcceptStmt(i)
 
 	return
+}
+
+func (i *Interpreter) Done() bool {
+	return i.done
+}
+
+func (i *Interpreter) VisitPrintStmt(stmt *ast.PrintStmt) interface{} {
+	fmt.Println(stmt.Expression.Accept(i))
+	return nil
+}
+
+func (i *Interpreter) VisitEndStmt(stmt *ast.EndStmt) interface{} {
+	i.done = true
+	return nil
+}
+
+func (i *Interpreter) VisitExprStmt(stmt *ast.ExprStmt) interface{} {
+	return stmt.Expression.Accept(i)
 }
 
 func (i *Interpreter) VisitBinaryExpr(expr *ast.BinaryExpr) interface{} {

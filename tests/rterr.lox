@@ -1,2 +1,2 @@
 // simple runtime error
--"hi"
+print(-"hi");

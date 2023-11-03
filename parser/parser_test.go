@@ -10,43 +10,39 @@ import (
 )
 
 func TestParserOne(t *testing.T) {
-	expectExpression(t, "1", "1")
+	expectExpression(t, "1;", "1")
 }
 
 func TestParserBinary(t *testing.T) {
-	expectExpression(t, "1 + 2", "(+ 1 2)")
+	expectExpression(t, "1 + 2;", "(+ 1 2)")
 }
 
 func TestParserUnary(t *testing.T) {
-	expectExpression(t, "-1", "(- 1)")
+	expectExpression(t, "-1;", "(- 1)")
 }
 
 func TestParserUnaryAndBinary(t *testing.T) {
-	expectExpression(t, "-1 * -1", "(* (- 1) (- 1))")
+	expectExpression(t, "-1 * -1;", "(* (- 1) (- 1))")
 }
 
 func TestParserGrouping(t *testing.T) {
-	expectExpression(t, "1 * (2 + 3)", "(* 1 (group (+ 2 3)))")
+	expectExpression(t, "1 * (2 + 3);", "(* 1 (group (+ 2 3)))")
 }
 
 func TestParserBinaryAssociativity(t *testing.T) {
-	expectExpression(t, "1 + 2 + 3", "(+ (+ 1 2) 3)")
+	expectExpression(t, "1 + 2 + 3;", "(+ (+ 1 2) 3)")
 }
 
 func TestParserBooleans(t *testing.T) {
-	expectExpression(t, "true == !false", "(== true (! false))")
+	expectExpression(t, "true == !false;", "(== true (! false))")
 }
 
 func TestParserComparisons(t *testing.T) {
-	expectExpression(t, "0 <= 1 >= 2", "(>= (<= 0 1) 2)")
+	expectExpression(t, "0 <= 1 >= 2;", "(>= (<= 0 1) 2)")
 }
 
 func TestParserNil(t *testing.T) {
-	expectExpression(t, "nil - nil == 0", "(== (- nil nil) 0)")
-}
-
-func TestParserEmpty(t *testing.T) {
-	expectError(t, "", "expected expression")
+	expectExpression(t, "nil - nil == 0;", "(== (- nil nil) 0)")
 }
 
 func TestParserWrongParen(t *testing.T) {
@@ -64,7 +60,7 @@ func TestParserLexicalErrors(t *testing.T) {
 func expectError(t *testing.T, src string, re string) {
 	t.Helper()
 	p := NewParser(scanner.NewScanner(bufio.NewReader(strings.NewReader(src))))
-	if _, err := p.Parse(); err == nil {
+	if _, err := p.NextStatement(); err == nil {
 		t.Errorf("expected error, got none")
 	} else {
 		if !regexp.MustCompile(re).MatchString(err.Error()) {
@@ -76,10 +72,12 @@ func expectError(t *testing.T, src string, re string) {
 func expectExpression(t *testing.T, src string, expected string) {
 	t.Helper()
 	p := NewParser(scanner.NewScanner(bufio.NewReader(strings.NewReader(src))))
-	if e, err := p.Parse(); err != nil {
+	if stmt, err := p.NextStatement(); err != nil {
 		t.Error(err)
+	} else if expr, ok := stmt.(*ast.ExprStmt); !ok {
+		t.Errorf("expected expression, got '%v'", stmt)
 	} else {
-		result := ast.Print(e)
+		result := ast.Print(expr.Expression)
 		if result != expected {
 			t.Errorf("expected '%s', got '%s'", expected, result)
 		}
