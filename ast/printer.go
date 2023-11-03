@@ -8,7 +8,7 @@ import (
 type printer struct{}
 
 func Print(expr Expr) string {
-	return expr.Accept(printer{}).(string)
+	return expr.AcceptExpr(printer{}).(string)
 }
 
 func (printer) VisitBinaryExpr(expr *BinaryExpr) interface{} {

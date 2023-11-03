@@ -10,7 +10,7 @@ type ExprVisitor interface {
 }
 
 type Expr interface {
-	Accept(ExprVisitor) interface{}
+	AcceptExpr(ExprVisitor) interface{}
 }
 
 type BinaryExpr struct {
@@ -19,7 +19,7 @@ type BinaryExpr struct {
 	Right    Expr
 }
 
-func (e *BinaryExpr) Accept(v ExprVisitor) interface{} {
+func (e *BinaryExpr) AcceptExpr(v ExprVisitor) interface{} {
 	return v.VisitBinaryExpr(e)
 }
 
@@ -27,7 +27,7 @@ type GroupingExpr struct {
 	Expression Expr
 }
 
-func (e *GroupingExpr) Accept(v ExprVisitor) interface{} {
+func (e *GroupingExpr) AcceptExpr(v ExprVisitor) interface{} {
 	return v.VisitGroupingExpr(e)
 }
 
@@ -35,7 +35,7 @@ type LiteralExpr struct {
 	Value interface{}
 }
 
-func (e *LiteralExpr) Accept(v ExprVisitor) interface{} {
+func (e *LiteralExpr) AcceptExpr(v ExprVisitor) interface{} {
 	return v.VisitLiteralExpr(e)
 }
 
@@ -44,6 +44,6 @@ type UnaryExpr struct {
 	Right    Expr
 }
 
-func (e *UnaryExpr) Accept(v ExprVisitor) interface{} {
+func (e *UnaryExpr) AcceptExpr(v ExprVisitor) interface{} {
 	return v.VisitUnaryExpr(e)
 }

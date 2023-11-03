@@ -45,7 +45,7 @@ func (i *Interpreter) Done() bool {
 }
 
 func (i *Interpreter) VisitPrintStmt(stmt *ast.PrintStmt) interface{} {
-	fmt.Println(stmt.Expression.Accept(i))
+	fmt.Println(stmt.Expression.AcceptExpr(i))
 	return nil
 }
 
@@ -55,12 +55,12 @@ func (i *Interpreter) VisitEndStmt(stmt *ast.EndStmt) interface{} {
 }
 
 func (i *Interpreter) VisitExprStmt(stmt *ast.ExprStmt) interface{} {
-	return stmt.Expression.Accept(i)
+	return stmt.Expression.AcceptExpr(i)
 }
 
 func (i *Interpreter) VisitBinaryExpr(expr *ast.BinaryExpr) interface{} {
-	left := expr.Left.Accept(i)
-	right := expr.Right.Accept(i)
+	left := expr.Left.AcceptExpr(i)
+	right := expr.Right.AcceptExpr(i)
 	switch expr.Operator.Type {
 	case token.MINUS:
 		if left, ok := left.(float64); ok {
@@ -163,7 +163,7 @@ func (i *Interpreter) VisitBinaryExpr(expr *ast.BinaryExpr) interface{} {
 }
 
 func (i *Interpreter) VisitGroupingExpr(expr *ast.GroupingExpr) interface{} {
-	return expr.Expression.Accept(i)
+	return expr.Expression.AcceptExpr(i)
 }
 
 func (i *Interpreter) VisitLiteralExpr(expr *ast.LiteralExpr) interface{} {
@@ -171,7 +171,7 @@ func (i *Interpreter) VisitLiteralExpr(expr *ast.LiteralExpr) interface{} {
 }
 
 func (i *Interpreter) VisitUnaryExpr(expr *ast.UnaryExpr) interface{} {
-	right := expr.Right.Accept(i)
+	right := expr.Right.AcceptExpr(i)
 	switch expr.Operator.Type {
 	case token.MINUS:
 		if x, ok := right.(float64); ok {
