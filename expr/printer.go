@@ -1,27 +1,29 @@
-package lox
+package expr
 
 import (
 	"fmt"
 	"strings"
 )
 
-type astPrinter struct{}
+type printer struct{}
 
-var AstPrinter = astPrinter{}
+func Print(expr Expr) string {
+	return expr.Accept(printer{}).(string)
+}
 
-func (astPrinter) VisitBinaryExpr(expr *Binary) interface{} {
+func (printer) VisitBinaryExpr(expr *Binary) interface{} {
 	return parenthesize(expr.Operator.Lexeme, expr.Left, expr.Right)
 }
-func (astPrinter) VisitGroupingExpr(expr *Grouping) interface{} {
+func (printer) VisitGroupingExpr(expr *Grouping) interface{} {
 	return parenthesize("group", expr.Expression)
 }
-func (astPrinter) VisitLiteralExpr(expr *Literal) interface{} {
+func (printer) VisitLiteralExpr(expr *Literal) interface{} {
 	if expr.Value == nil {
 		return "nil"
 	}
 	return fmt.Sprintf("%v", expr.Value)
 }
-func (astPrinter) VisitUnaryExpr(expr *Unary) interface{} {
+func (printer) VisitUnaryExpr(expr *Unary) interface{} {
 	return parenthesize(expr.Operator.Lexeme, expr.Right)
 }
 
@@ -31,7 +33,7 @@ func parenthesize(name string, exprs ...Expr) string {
 	builder.WriteString(name)
 	for _, expr := range exprs {
 		builder.WriteRune(' ')
-		builder.WriteString(expr.Accept(AstPrinter).(string))
+		builder.WriteString(Print(expr))
 	}
 	builder.WriteRune(')')
 	return builder.String()

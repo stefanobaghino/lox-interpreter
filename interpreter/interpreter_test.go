@@ -1,7 +1,11 @@
-package lox
+package interpreter
 
 import (
+	"bufio"
+	"lox/parser"
+	"lox/scanner"
 	"regexp"
+	"strings"
 	"testing"
 )
 
@@ -80,7 +84,7 @@ func expectRuntimeError(t *testing.T, src string, regex string) {
 	t.Helper()
 	if _, err := interpret(t, src); err == nil {
 		t.Errorf("expected runtime error matching '%s', got none", regex)
-	} else if re, ok := err.(*runtimeError); ok {
+	} else if re, ok := err.(*RuntimeError); ok {
 		if !regexp.MustCompile(regex).MatchString(re.Error()) {
 			t.Errorf("expected runtime error matching '%s', got '%v'", regex, re.Error())
 		}
@@ -101,6 +105,6 @@ func expectResult(t *testing.T, src string, expected interface{}) {
 }
 
 func interpret(t *testing.T, src string) (interface{}, error) {
-	expr, _ := parser(src).Parse()
+	expr, _ := parser.NewParser(scanner.NewScanner(bufio.NewReader(strings.NewReader(src)))).Parse()
 	return NewInterpreter().Interpret(expr)
 }

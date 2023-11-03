@@ -1,26 +1,31 @@
-package lox
+package main
 
 import (
 	"bufio"
 	"fmt"
 	"io"
+	"lox/interpreter"
+	"lox/parser"
+	"lox/scanner"
 	"os"
 	"strings"
 )
 
-type syntaxError struct {
-	line    int
-	message string
-}
-
-func (e syntaxError) Error() string {
-	return fmt.Sprintf("syntax error on line %d: %s", e.line, e.message)
+func main() {
+	if len(os.Args) > 2 {
+		fmt.Println("Usage: lox [path/to/script.lox]")
+		os.Exit(64)
+	} else if len(os.Args) == 2 {
+		runFile(os.Args[1])
+	} else {
+		runPrompt()
+	}
 }
 
 var hadError bool = false
 var hadRuntimeError bool = false
 
-func RunFile(path string) {
+func runFile(path string) {
 	file, err := os.Open(path)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err.Error())
@@ -36,7 +41,7 @@ func RunFile(path string) {
 	}
 }
 
-func RunPrompt() {
+func runPrompt() {
 	reader := bufio.NewReader(os.Stdin)
 	for {
 		fmt.Print("> ")
@@ -52,12 +57,12 @@ func RunPrompt() {
 }
 
 func run(reader *bufio.Reader) {
-	p := NewParser(NewScanner(reader))
+	p := parser.NewParser(scanner.NewScanner(reader))
 	if expr, err := p.Parse(); err != nil {
 		fmt.Fprintf(os.Stderr, "%s\n", err.Error())
 		hadError = true
 	} else {
-		res, err := NewInterpreter().Interpret(expr)
+		res, err := interpreter.NewInterpreter().Interpret(expr)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "%s\n", err.Error())
 			hadRuntimeError = true

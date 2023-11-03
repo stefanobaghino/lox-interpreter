@@ -1,9 +1,9 @@
-package lox
+package token
 
 import "fmt"
 
 type Token struct {
-	Type    TokenType
+	Type    Type
 	Lexeme  string
 	Literal interface{}
 	Line    int
@@ -13,11 +13,11 @@ func (t Token) String() string {
 	return fmt.Sprintf("%v %v %v", t.Type, t.Lexeme, t.Literal)
 }
 
-type TokenType int
+type Type int
 
 const (
 	// Special token to return in case of error.
-	ERROR TokenType = iota
+	ERROR Type = iota
 
 	// Single-character tokens.
 	LEFT_PAREN
@@ -68,7 +68,7 @@ const (
 	EOF
 )
 
-func (t TokenType) String() string {
+func (t Type) String() string {
 	switch t {
 	case LEFT_PAREN:
 		return "LEFT_PAREN"

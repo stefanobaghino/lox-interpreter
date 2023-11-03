@@ -1,8 +1,6 @@
-package lox
+package expr
 
-type Expr interface {
-	Accept(Visitor) interface{}
-}
+import "lox/token"
 
 type Visitor interface {
 	VisitBinaryExpr(*Binary) interface{}
@@ -11,14 +9,18 @@ type Visitor interface {
 	VisitUnaryExpr(*Unary) interface{}
 }
 
-type Binary struct {
-	Left     Expr
-	Operator Token
-	Right    Expr
-}
-
 func (e *Binary) Accept(v Visitor) interface{} {
 	return v.VisitBinaryExpr(e)
+}
+
+type Expr interface {
+	Accept(Visitor) interface{}
+}
+
+type Binary struct {
+	Left     Expr
+	Operator token.Token
+	Right    Expr
 }
 
 type Grouping struct {
@@ -38,7 +40,7 @@ func (e *Literal) Accept(v Visitor) interface{} {
 }
 
 type Unary struct {
-	Operator Token
+	Operator token.Token
 	Right    Expr
 }
 
