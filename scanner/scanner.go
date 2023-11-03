@@ -1,9 +1,11 @@
-package lox
+package scanner
 
 import (
 	"bufio"
 	"errors"
+	"fmt"
 	"io"
+	"lox/token"
 	"strconv"
 	"unicode"
 	"unicode/utf8"
@@ -16,67 +18,80 @@ type Scanner struct {
 	line    int
 }
 
+type LexicalError struct {
+	line    int
+	message string
+}
+
+func (e LexicalError) Error() string {
+	return fmt.Sprintf("lexical error on line %d: %s", e.line, e.message)
+}
+
+func (e LexicalError) Line() int {
+	return e.line
+}
+
 func NewScanner(reader *bufio.Reader) *Scanner {
 	return &Scanner{reader: reader, line: 1}
 }
 
-func (s *Scanner) NextToken() (Token, error) {
+func (s *Scanner) NextToken() (token.Token, error) {
 	s.chars = s.chars[s.current:]
 	s.current = 0
 	r := s.advance()
 	switch {
 	case r == utf8.RuneError:
-		return s.mkToken(EOF), nil
+		return s.mkToken(token.EOF), nil
 	case r == '(':
-		return s.mkToken(LEFT_PAREN), nil
+		return s.mkToken(token.LEFT_PAREN), nil
 	case r == ')':
-		return s.mkToken(RIGHT_PAREN), nil
+		return s.mkToken(token.RIGHT_PAREN), nil
 	case r == '{':
-		return s.mkToken(LEFT_BRACE), nil
+		return s.mkToken(token.LEFT_BRACE), nil
 	case r == '}':
-		return s.mkToken(RIGHT_BRACE), nil
+		return s.mkToken(token.RIGHT_BRACE), nil
 	case r == ',':
-		return s.mkToken(COMMA), nil
+		return s.mkToken(token.COMMA), nil
 	case r == '.':
-		return s.mkToken(DOT), nil
+		return s.mkToken(token.DOT), nil
 	case r == '-':
-		return s.mkToken(MINUS), nil
+		return s.mkToken(token.MINUS), nil
 	case r == '+':
-		return s.mkToken(PLUS), nil
+		return s.mkToken(token.PLUS), nil
 	case r == ';':
-		return s.mkToken(SEMICOLON), nil
+		return s.mkToken(token.SEMICOLON), nil
 	case r == '*':
-		return s.mkToken(STAR), nil
+		return s.mkToken(token.STAR), nil
 	case r == '!':
 		if s.match('=') {
-			return s.mkToken(BANG_EQUAL), nil
+			return s.mkToken(token.BANG_EQUAL), nil
 		} else {
-			return s.mkToken(BANG), nil
+			return s.mkToken(token.BANG), nil
 		}
 	case r == '=':
 		if s.match('=') {
-			return s.mkToken(EQUAL_EQUAL), nil
+			return s.mkToken(token.EQUAL_EQUAL), nil
 		} else {
-			return s.mkToken(EQUAL), nil
+			return s.mkToken(token.EQUAL), nil
 		}
 	case r == '<':
 		if s.match('=') {
-			return s.mkToken(LESS_EQUAL), nil
+			return s.mkToken(token.LESS_EQUAL), nil
 		} else {
-			return s.mkToken(LESS), nil
+			return s.mkToken(token.LESS), nil
 		}
 	case r == '>':
 		if s.match('=') {
-			return s.mkToken(GREATER_EQUAL), nil
+			return s.mkToken(token.GREATER_EQUAL), nil
 		} else {
-			return s.mkToken(GREATER), nil
+			return s.mkToken(token.GREATER), nil
 		}
 	case r == '/':
 		if s.match('/') {
 			s.skipUntil(func(r rune) bool { return r == '\n' })
 			return s.NextToken()
 		} else {
-			return s.mkToken(SLASH), nil
+			return s.mkToken(token.SLASH), nil
 		}
 	case unicode.IsSpace(r):
 		if r == '\n' {
@@ -96,20 +111,20 @@ func (s *Scanner) NextToken() (Token, error) {
 	case unicode.IsLetter(r):
 		return s.id(), nil
 	default:
-		return s.mkToken(ERROR), &syntaxError{s.line, "unexpected character"}
+		return s.mkToken(token.ERROR), &LexicalError{s.line, "unexpected character"}
 	}
 }
 
-func (s *Scanner) id() Token {
+func (s *Scanner) id() token.Token {
 	s.skipUntil(func(r rune) bool { return !unicode.IsDigit(r) && !unicode.IsLetter(r) })
 	t, ok := keywords[string(s.chars[:s.current])]
 	if !ok {
-		t = IDENTIFIER
+		t = token.IDENTIFIER
 	}
 	return s.mkToken(t)
 }
 
-func (s *Scanner) num() (Token, error) {
+func (s *Scanner) num() (token.Token, error) {
 	s.skipUntil(func(r rune) bool { return !unicode.IsDigit(r) })
 	// Look for a fractional part.
 	if unicode.IsDigit(s.readRuneAhead(1)) && s.readRune() == '.' {
@@ -117,18 +132,18 @@ func (s *Scanner) num() (Token, error) {
 		s.skipUntil(func(r rune) bool { return !unicode.IsDigit(r) })
 	}
 	if x, err := strconv.ParseFloat(string(s.chars[:s.current]), 64); err != nil {
-		return s.mkToken(ERROR), &syntaxError{s.line, "invalid number"}
+		return s.mkToken(token.ERROR), &LexicalError{s.line, "invalid number"}
 	} else {
-		return s.mkLiteral(NUMBER, x), nil
+		return s.mkLiteral(token.NUMBER, x), nil
 	}
 }
 
-func (s *Scanner) str() Token {
+func (s *Scanner) str() token.Token {
 	s.current += 1 // skip the opening quote
 	s.skipUntil(func(r rune) bool { return r == '"' })
 	value := string(s.chars[1:s.current])
 	s.current += 1 // skip the closing quote
-	return s.mkLiteral(STRING, value)
+	return s.mkLiteral(token.STRING, value)
 }
 
 func (s *Scanner) match(expected rune) bool {
@@ -181,30 +196,30 @@ func (s *Scanner) readRuneAhead(offset int) rune {
 	return s.chars[offset]
 }
 
-func (s *Scanner) mkToken(t TokenType) Token {
+func (s *Scanner) mkToken(t token.Type) token.Token {
 	return s.mkLiteral(t, nil)
 }
 
-func (s *Scanner) mkLiteral(t TokenType, literal interface{}) Token {
+func (s *Scanner) mkLiteral(t token.Type, literal interface{}) token.Token {
 	lexeme := string(s.chars[:s.current])
-	return Token{Type: t, Lexeme: lexeme, Literal: literal, Line: s.line}
+	return token.Token{Type: t, Lexeme: lexeme, Literal: literal, Line: s.line}
 }
 
-var keywords = map[string]TokenType{
-	"and":    AND,
-	"class":  CLASS,
-	"else":   ELSE,
-	"false":  FALSE,
-	"for":    FOR,
-	"fun":    FUN,
-	"if":     IF,
-	"nil":    NIL,
-	"or":     OR,
-	"print":  PRINT,
-	"return": RETURN,
-	"super":  SUPER,
-	"this":   THIS,
-	"true":   TRUE,
-	"var":    VAR,
-	"while":  WHILE,
+var keywords = map[string]token.Type{
+	"and":    token.AND,
+	"class":  token.CLASS,
+	"else":   token.ELSE,
+	"false":  token.FALSE,
+	"for":    token.FOR,
+	"fun":    token.FUN,
+	"if":     token.IF,
+	"nil":    token.NIL,
+	"or":     token.OR,
+	"print":  token.PRINT,
+	"return": token.RETURN,
+	"super":  token.SUPER,
+	"this":   token.THIS,
+	"true":   token.TRUE,
+	"var":    token.VAR,
+	"while":  token.WHILE,
 }
