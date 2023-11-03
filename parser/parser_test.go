@@ -2,7 +2,7 @@ package parser
 
 import (
 	"bufio"
-	"lox/expr"
+	"lox/ast"
 	"lox/scanner"
 	"regexp"
 	"strings"
@@ -79,7 +79,7 @@ func expectExpression(t *testing.T, src string, expected string) {
 	if e, err := p.Parse(); err != nil {
 		t.Error(err)
 	} else {
-		result := expr.Print(e)
+		result := ast.Print(e)
 		if result != expected {
 			t.Errorf("expected '%s', got '%s'", expected, result)
 		}

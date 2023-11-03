@@ -2,7 +2,7 @@ package interpreter
 
 import (
 	"fmt"
-	"lox/expr"
+	"lox/ast"
 	"lox/token"
 )
 
@@ -21,7 +21,7 @@ func NewInterpreter() *Interpreter {
 	return &Interpreter{}
 }
 
-func (i *Interpreter) Interpret(expr expr.Expr) (result interface{}, err error) {
+func (i *Interpreter) Interpret(expr ast.Expr) (result interface{}, err error) {
 
 	defer func() {
 		if e := recover(); e != nil {
@@ -38,7 +38,7 @@ func (i *Interpreter) Interpret(expr expr.Expr) (result interface{}, err error) 
 	return
 }
 
-func (i *Interpreter) VisitBinaryExpr(expr *expr.Binary) interface{} {
+func (i *Interpreter) VisitBinaryExpr(expr *ast.BinaryExpr) interface{} {
 	left := expr.Left.Accept(i)
 	right := expr.Right.Accept(i)
 	switch expr.Operator.Type {
@@ -142,15 +142,15 @@ func (i *Interpreter) VisitBinaryExpr(expr *expr.Binary) interface{} {
 	panic(fmt.Errorf("unexpected operator: %v", expr.Operator))
 }
 
-func (i *Interpreter) VisitGroupingExpr(expr *expr.Grouping) interface{} {
+func (i *Interpreter) VisitGroupingExpr(expr *ast.GroupingExpr) interface{} {
 	return expr.Expression.Accept(i)
 }
 
-func (i *Interpreter) VisitLiteralExpr(expr *expr.Literal) interface{} {
+func (i *Interpreter) VisitLiteralExpr(expr *ast.LiteralExpr) interface{} {
 	return expr.Value
 }
 
-func (i *Interpreter) VisitUnaryExpr(expr *expr.Unary) interface{} {
+func (i *Interpreter) VisitUnaryExpr(expr *ast.UnaryExpr) interface{} {
 	right := expr.Right.Accept(i)
 	switch expr.Operator.Type {
 	case token.MINUS:

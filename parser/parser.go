@@ -3,7 +3,7 @@ package parser
 import (
 	"fmt"
 	"lox"
-	"lox/expr"
+	"lox/ast"
 	"lox/scanner"
 	"lox/token"
 )
@@ -30,7 +30,7 @@ func NewParser(scanner *scanner.Scanner) *Parser {
 	return &Parser{scanner: scanner}
 }
 
-func (p *Parser) Parse() (expr expr.Expr, err error) {
+func (p *Parser) Parse() (expr ast.Expr, err error) {
 	defer func() {
 		if e := recover(); e != nil {
 			if se, ok := e.(lox.Error); ok {
@@ -44,91 +44,91 @@ func (p *Parser) Parse() (expr expr.Expr, err error) {
 	return
 }
 
-func (p *Parser) expression() expr.Expr {
+func (p *Parser) expression() ast.Expr {
 	return p.equality()
 }
 
-func (p *Parser) equality() expr.Expr {
+func (p *Parser) equality() ast.Expr {
 	left := p.comparison()
 
 	for p.oneOf(token.BANG_EQUAL, token.EQUAL_EQUAL) {
 		operator := p.pop()
 		right := p.comparison()
-		left = &expr.Binary{Left: left, Operator: operator, Right: right}
+		left = &ast.BinaryExpr{Left: left, Operator: operator, Right: right}
 	}
 
 	return left
 }
 
-func (p *Parser) comparison() expr.Expr {
+func (p *Parser) comparison() ast.Expr {
 	left := p.term()
 
 	for p.oneOf(token.GREATER, token.GREATER_EQUAL, token.LESS, token.LESS_EQUAL) {
 		operator := p.pop()
 		right := p.term()
-		left = &expr.Binary{Left: left, Operator: operator, Right: right}
+		left = &ast.BinaryExpr{Left: left, Operator: operator, Right: right}
 	}
 
 	return left
 }
 
-func (p *Parser) term() expr.Expr {
+func (p *Parser) term() ast.Expr {
 	left := p.factor()
 
 	for p.oneOf(token.MINUS, token.PLUS) {
 		operator := p.pop()
 		right := p.factor()
-		left = &expr.Binary{Left: left, Operator: operator, Right: right}
+		left = &ast.BinaryExpr{Left: left, Operator: operator, Right: right}
 	}
 
 	return left
 }
 
-func (p *Parser) factor() expr.Expr {
+func (p *Parser) factor() ast.Expr {
 	left := p.unary()
 
 	for p.oneOf(token.SLASH, token.STAR) {
 		operator := p.pop()
 		right := p.unary()
-		left = &expr.Binary{Left: left, Operator: operator, Right: right}
+		left = &ast.BinaryExpr{Left: left, Operator: operator, Right: right}
 	}
 
 	return left
 }
 
-func (p *Parser) unary() expr.Expr {
+func (p *Parser) unary() ast.Expr {
 	if p.oneOf(token.BANG, token.MINUS) {
 		operator := p.pop()
 		right := p.unary()
-		return &expr.Unary{Operator: operator, Right: right}
+		return &ast.UnaryExpr{Operator: operator, Right: right}
 	}
 
 	return p.primary()
 }
 
-func (p *Parser) primary() expr.Expr {
+func (p *Parser) primary() ast.Expr {
 	if p.oneOf(token.FALSE) {
 		p.pop()
-		return &expr.Literal{Value: false}
+		return &ast.LiteralExpr{Value: false}
 	}
 	if p.oneOf(token.TRUE) {
 		p.pop()
-		return &expr.Literal{Value: true}
+		return &ast.LiteralExpr{Value: true}
 	}
 	if p.oneOf(token.NIL) {
 		p.pop()
-		return &expr.Literal{Value: nil}
+		return &ast.LiteralExpr{Value: nil}
 	}
 	if p.oneOf(token.NUMBER, token.STRING) {
 		token := p.pop()
-		return &expr.Literal{Value: token.Literal}
+		return &ast.LiteralExpr{Value: token.Literal}
 	}
 
 	if p.oneOf(token.LEFT_PAREN) {
 		p.pop()
 		group := p.expression()
 		p.expect(token.RIGHT_PAREN, "expected ')' after expression")
-		return &expr.Grouping{Expression: group}
+		return &ast.GroupingExpr{Expression: group}
 	}
 
 	panic(&SyntaxError{p.tokens[0].Line, "expected expression"})
