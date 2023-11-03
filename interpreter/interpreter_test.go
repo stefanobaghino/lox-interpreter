@@ -84,10 +84,17 @@ func TestInterpreterAssert(t *testing.T) {
 }
 
 func TestInterpreterShading(t *testing.T) {
+	expectResult(t, "var x; { x = 2; } x;", 2.0)
 	expectResult(t, "var x = 1; { var x = 2; assert x == 2; } x;", 1.0)
-	expectResult(t, "var x = 1; { x = 2; } x;", 2.0)
 	expectResult(t, "var x = 1; { var x = 2; { x = 3; } assert x == 3; } x;", 1.0)
 	expectResult(t, "var x = 1; { var x = 2; { var x = 3; assert x == 3; } assert x == 2; } x;", 1.0)
+}
+
+func TestInterpreterEnv(t *testing.T) {
+	expectResult(t, "var x = 1; { assert x == 1; }", nil)
+	expectRuntimeError(t, "x + 1;", "variable not defined")
+	expectRuntimeError(t, "x = 1;", "variable not declared")
+	expectRuntimeError(t, "var x = 1; var x = 2;", "variable already declared")
 }
 
 func expectRuntimeError(t *testing.T, src string, regex string) {

@@ -47,7 +47,7 @@ func (i *Interpreter) Done() bool {
 
 func (i *Interpreter) VisitVarDeclStmt(stmt *ast.VarDeclStmt) interface{} {
 	i.env.Define(stmt.Name.Lexeme, func() interface{} {
-		if stmt.Initializer == nil {
+		if *stmt.Initializer == nil {
 			return nil
 		}
 		initializer := *stmt.Initializer
