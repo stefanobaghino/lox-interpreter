@@ -118,6 +118,15 @@ func TestScannerLineNumbers(t *testing.T) {
 	expectTokenType(t, expectNext(t, s), token.EOF)
 }
 
+func TestScannerAssert(t *testing.T) {
+	src := `assert true;`
+	s := NewScanner(bufio.NewReader(strings.NewReader(src)))
+	expectTokenType(t, expectNext(t, s), token.ASSERT)
+	expectTokenType(t, expectNext(t, s), token.TRUE)
+	expectTokenType(t, expectNext(t, s), token.SEMICOLON)
+	expectTokenType(t, expectNext(t, s), token.EOF)
+}
+
 func expectLexicalError(t *testing.T, scanner *Scanner) *LexicalError {
 	t.Helper()
 	r, err := scanner.NextToken()

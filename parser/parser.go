@@ -47,8 +47,17 @@ func (p *Parser) statement() ast.Stmt {
 	if p.oneOf(token.EOF) {
 		return p.endStatement()
 	}
+	if p.oneOf(token.VAR) {
+		return p.varDeclStatement()
+	}
+	if p.oneOf(token.ASSERT) {
+		return p.assertStatement()
+	}
 	if p.oneOf(token.PRINT) {
 		return p.printStatement()
+	}
+	if p.oneOf(token.LEFT_BRACE) {
+		return p.blockStatement()
 	}
 	return p.expressionStatement()
 }
@@ -58,11 +67,41 @@ func (p *Parser) endStatement() ast.Stmt {
 	return &ast.EndStmt{}
 }
 
+func (p *Parser) varDeclStatement() ast.Stmt {
+	p.pop()
+	p.readToken()
+	name := p.expect(token.IDENTIFIER, "expected identifier after 'var'")
+	var initializer ast.Expr
+	if p.oneOf(token.EQUAL) {
+		p.pop()
+		initializer = p.expression()
+	}
+	p.expect(token.SEMICOLON, "expected ';' after variable declaration")
+	return &ast.VarDeclStmt{Name: name, Initializer: &initializer}
+}
+
+func (p *Parser) assertStatement() ast.Stmt {
+	p.pop()
+	expr := p.expression()
+	p.expect(token.SEMICOLON, "expected ';' after expression")
+	return &ast.AssertStmt{Expression: expr}
+}
+
 func (p *Parser) printStatement() ast.Stmt {
 	p.pop()
 	expr := p.expression()
 	p.expect(token.SEMICOLON, "expected ';' after expression")
 	return &ast.PrintStmt{Expression: expr}
+}
+
+func (p *Parser) blockStatement() ast.Stmt {
+	p.pop()
+	statements := []ast.Stmt{}
+	for !p.oneOf(token.RIGHT_BRACE) {
+		statements = append(statements, p.statement())
+	}
+	p.expect(token.RIGHT_BRACE, "expected '}' after block")
+	return &ast.BlockStmt{Statements: statements}
 }
 
 func (p *Parser) expressionStatement() ast.Stmt {
@@ -72,7 +111,24 @@ func (p *Parser) expressionStatement() ast.Stmt {
 }
 
 func (p *Parser) expression() ast.Expr {
-	return p.equality()
+	return p.assignment()
+}
+
+func (p *Parser) assignment() ast.Expr {
+	expr := p.equality()
+
+	if p.oneOf(token.EQUAL) {
+		equals := p.pop()
+		value := p.assignment()
+
+		if varExpr, ok := expr.(*ast.VarExpr); ok {
+			return &ast.AssignmentExpr{Name: varExpr.Name, Value: value}
+		}
+
+		panic(&SyntaxError{equals.Line, "invalid assignment target"})
+	}
+
+	return expr
 }
 
 func (p *Parser) equality() ast.Expr {
@@ -134,6 +190,10 @@ func (p *Parser) unary() ast.Expr {
 }
 
 func (p *Parser) primary() ast.Expr {
+	if p.oneOf(token.IDENTIFIER) {
+		name := p.pop()
+		return &ast.VarExpr{Name: name}
+	}
 	if p.oneOf(token.FALSE) {
 		p.pop()
 		return &ast.LiteralExpr{Value: false}
@@ -172,7 +232,7 @@ func (p *Parser) oneOf(types ...token.Type) bool {
 	return false
 }
 
-func (p *Parser) expect(t token.Type, msg string) {
+func (p *Parser) expect(t token.Type, msg string) token.Token {
 	tok := p.pop()
 	if tok.Type != t {
 		if tok.Type == token.EOF {
@@ -182,6 +242,7 @@ func (p *Parser) expect(t token.Type, msg string) {
 		}
 		panic(&SyntaxError{tok.Line, msg})
 	}
+	return tok
 }
 
 func (p *Parser) check(t token.Type) bool {

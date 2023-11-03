@@ -2,7 +2,7 @@ package parser
 
 import (
 	"bufio"
-	"lox/ast"
+	"lox/format"
 	"lox/scanner"
 	"regexp"
 	"strings"
@@ -10,39 +10,39 @@ import (
 )
 
 func TestParserOne(t *testing.T) {
-	expectExpression(t, "1;", "1")
+	expectFormatted(t, "1;")
 }
 
 func TestParserBinary(t *testing.T) {
-	expectExpression(t, "1 + 2;", "(+ 1 2)")
+	expectFormatted(t, "1 + 2;")
 }
 
 func TestParserUnary(t *testing.T) {
-	expectExpression(t, "-1;", "(- 1)")
+	expectFormatted(t, "-1;")
 }
 
 func TestParserUnaryAndBinary(t *testing.T) {
-	expectExpression(t, "-1 * -1;", "(* (- 1) (- 1))")
+	expectFormatted(t, "-1 * -1;")
 }
 
 func TestParserGrouping(t *testing.T) {
-	expectExpression(t, "1 * (2 + 3);", "(* 1 (group (+ 2 3)))")
+	expectFormatted(t, "1 * (2 + 3);")
 }
 
 func TestParserBinaryAssociativity(t *testing.T) {
-	expectExpression(t, "1 + 2 + 3;", "(+ (+ 1 2) 3)")
+	expectFormatted(t, "1 + 2 + 3;")
 }
 
 func TestParserBooleans(t *testing.T) {
-	expectExpression(t, "true == !false;", "(== true (! false))")
+	expectFormatted(t, "true == !false;")
 }
 
 func TestParserComparisons(t *testing.T) {
-	expectExpression(t, "0 <= 1 >= 2;", "(>= (<= 0 1) 2)")
+	expectFormatted(t, "0 <= 1 >= 2;")
 }
 
 func TestParserNil(t *testing.T) {
-	expectExpression(t, "nil - nil == 0;", "(== (- nil nil) 0)")
+	expectFormatted(t, "nil - nil == 0;")
 }
 
 func TestParserWrongParen(t *testing.T) {
@@ -57,6 +57,14 @@ func TestParserLexicalErrors(t *testing.T) {
 	expectError(t, "(1 + 2%", "unexpected character")
 }
 
+func TestParserVarDecl(t *testing.T) {
+	expectFormatted(t, "var x = 1;")
+}
+
+func TestParserAssert(t *testing.T) {
+	expectFormatted(t, "assert true;")
+}
+
 func expectError(t *testing.T, src string, re string) {
 	t.Helper()
 	p := NewParser(scanner.NewScanner(bufio.NewReader(strings.NewReader(src))))
@@ -69,17 +77,16 @@ func expectError(t *testing.T, src string, re string) {
 	}
 }
 
-func expectExpression(t *testing.T, src string, expected string) {
+func expectFormatted(t *testing.T, src string) {
 	t.Helper()
 	p := NewParser(scanner.NewScanner(bufio.NewReader(strings.NewReader(src))))
+	f := format.NewFormatter()
 	if stmt, err := p.NextStatement(); err != nil {
 		t.Error(err)
-	} else if expr, ok := stmt.(*ast.ExprStmt); !ok {
-		t.Errorf("expected expression, got '%v'", stmt)
 	} else {
-		result := ast.Print(expr.Expression)
-		if result != expected {
-			t.Errorf("expected '%s', got '%s'", expected, result)
+		result := f.Format(stmt)
+		if result != src {
+			t.Errorf("expected '%s', got '%s'", src, result)
 		}
 	}
 }

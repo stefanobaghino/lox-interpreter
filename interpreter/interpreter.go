@@ -16,11 +16,12 @@ func (e RuntimeError) Error() string {
 }
 
 type Interpreter struct {
+	env  *Env
 	done bool
 }
 
 func NewInterpreter() *Interpreter {
-	return &Interpreter{}
+	return &Interpreter{env: NewGlobalEnv()}
 }
 
 func (i *Interpreter) Interpret(stmt ast.Stmt) (result interface{}, err error) {
@@ -44,8 +45,37 @@ func (i *Interpreter) Done() bool {
 	return i.done
 }
 
+func (i *Interpreter) VisitVarDeclStmt(stmt *ast.VarDeclStmt) interface{} {
+	i.env.Define(stmt.Name.Lexeme, func() interface{} {
+		if stmt.Initializer == nil {
+			return nil
+		}
+		initializer := *stmt.Initializer
+		return initializer.AcceptExpr(i)
+	})
+	return nil
+}
+
+func (i *Interpreter) VisitBlockStmt(stmt *ast.BlockStmt) interface{} {
+	env := NewEnv(i.env)
+	i.env = env
+	for _, stmt := range stmt.Statements {
+		stmt.AcceptStmt(i)
+	}
+	i.env = env.parent
+	return nil
+}
+
 func (i *Interpreter) VisitPrintStmt(stmt *ast.PrintStmt) interface{} {
 	fmt.Println(stmt.Expression.AcceptExpr(i))
+	return nil
+}
+
+func (i *Interpreter) VisitAssertStmt(stmt *ast.AssertStmt) interface{} {
+	assertion := stmt.Expression.AcceptExpr(i)
+	if !truthy(assertion) {
+		panic(&RuntimeError{line: 0 /*TODO*/, message: "assertion failed"})
+	}
 	return nil
 }
 
@@ -56,6 +86,15 @@ func (i *Interpreter) VisitEndStmt(stmt *ast.EndStmt) interface{} {
 
 func (i *Interpreter) VisitExprStmt(stmt *ast.ExprStmt) interface{} {
 	return stmt.Expression.AcceptExpr(i)
+}
+
+func (i *Interpreter) VisitAssignmentExpr(expr *ast.AssignmentExpr) interface{} {
+	var value interface{}
+	i.env.Assign(expr.Name.Lexeme, func() interface{} {
+		value = expr.Value.AcceptExpr(i)
+		return value
+	})
+	return value
 }
 
 func (i *Interpreter) VisitBinaryExpr(expr *ast.BinaryExpr) interface{} {
@@ -170,6 +209,17 @@ func (i *Interpreter) VisitLiteralExpr(expr *ast.LiteralExpr) interface{} {
 	return expr.Value
 }
 
+func truthy(value interface{}) bool {
+	switch x := value.(type) {
+	case nil:
+		return false
+	case bool:
+		return x
+	default:
+		return true
+	}
+}
+
 func (i *Interpreter) VisitUnaryExpr(expr *ast.UnaryExpr) interface{} {
 	right := expr.Right.AcceptExpr(i)
 	switch expr.Operator.Type {
@@ -180,14 +230,11 @@ func (i *Interpreter) VisitUnaryExpr(expr *ast.UnaryExpr) interface{} {
 			panic(&RuntimeError{line: expr.Operator.Line, message: "operand must be a number"})
 		}
 	case token.BANG:
-		switch x := right.(type) {
-		case nil:
-			return true
-		case bool:
-			return !x
-		default:
-			return false
-		}
+		return !truthy(right)
 	}
 	panic(fmt.Errorf("unexpected operator: %v", expr.Operator))
+}
+
+func (i *Interpreter) VisitVarExpr(expr *ast.VarExpr) interface{} {
+	return i.env.Get(expr.Name.Lexeme)
 }

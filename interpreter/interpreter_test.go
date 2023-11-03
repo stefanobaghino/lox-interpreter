@@ -75,6 +75,21 @@ func TestInterpreterTypeErrors(t *testing.T) {
 	expectRuntimeError(t, "-true;", "operand must be a number")
 }
 
+func TestInterpreterAssert(t *testing.T) {
+	expectResult(t, "assert true;", nil)
+	expectResult(t, "assert 0;", nil)
+	expectResult(t, "assert \"hi\";", nil)
+	expectRuntimeError(t, "assert false;", "assertion failed")
+	expectRuntimeError(t, "assert nil;", "assertion failed")
+}
+
+func TestInterpreterShading(t *testing.T) {
+	expectResult(t, "var x = 1; { var x = 2; assert x == 2; } x;", 1.0)
+	expectResult(t, "var x = 1; { x = 2; } x;", 2.0)
+	expectResult(t, "var x = 1; { var x = 2; { x = 3; } assert x == 3; } x;", 1.0)
+	expectResult(t, "var x = 1; { var x = 2; { var x = 3; assert x == 3; } assert x == 2; } x;", 1.0)
+}
+
 func expectRuntimeError(t *testing.T, src string, regex string) {
 	t.Helper()
 	if _, err := interpret(t, src); err == nil {
@@ -100,6 +115,23 @@ func expectResult(t *testing.T, src string, expected interface{}) {
 }
 
 func interpret(t *testing.T, src string) (interface{}, error) {
-	stmt, _ := parser.NewParser(scanner.NewScanner(bufio.NewReader(strings.NewReader(src)))).NextStatement()
-	return NewInterpreter().Interpret(stmt)
+	p := parser.NewParser(scanner.NewScanner(bufio.NewReader(strings.NewReader(src))))
+	i := NewInterpreter()
+	var result interface{}
+	for !i.Done() {
+		stmt, err := p.NextStatement()
+		if err != nil {
+			return nil, err
+		}
+		if res, err := i.Interpret(stmt); err != nil {
+			return nil, err
+		} else {
+			if i.Done() {
+				break
+			} else {
+				result = res
+			}
+		}
+	}
+	return result, nil
 }

@@ -49,6 +49,7 @@ const (
 
 	// Keywords.
 	AND
+	ASSERT
 	CLASS
 	ELSE
 	FALSE

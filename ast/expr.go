@@ -3,14 +3,25 @@ package ast
 import "lox/token"
 
 type ExprVisitor interface {
+	VisitAssignmentExpr(*AssignmentExpr) interface{}
 	VisitBinaryExpr(*BinaryExpr) interface{}
 	VisitGroupingExpr(*GroupingExpr) interface{}
 	VisitLiteralExpr(*LiteralExpr) interface{}
 	VisitUnaryExpr(*UnaryExpr) interface{}
+	VisitVarExpr(*VarExpr) interface{}
 }
 
 type Expr interface {
 	AcceptExpr(ExprVisitor) interface{}
+}
+
+type AssignmentExpr struct {
+	Name  token.Token
+	Value Expr
+}
+
+func (e *AssignmentExpr) AcceptExpr(v ExprVisitor) interface{} {
+	return v.VisitAssignmentExpr(e)
 }
 
 type BinaryExpr struct {
@@ -46,4 +57,12 @@ type UnaryExpr struct {
 
 func (e *UnaryExpr) AcceptExpr(v ExprVisitor) interface{} {
 	return v.VisitUnaryExpr(e)
+}
+
+type VarExpr struct {
+	Name token.Token
+}
+
+func (e *VarExpr) AcceptExpr(v ExprVisitor) interface{} {
+	return v.VisitVarExpr(e)
 }

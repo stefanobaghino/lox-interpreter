@@ -3,9 +3,7 @@ package main
 import (
 	"bufio"
 	"fmt"
-	"lox/interpreter"
-	"lox/parser"
-	"lox/scanner"
+	"lox/runner"
 	"os"
 )
 
@@ -15,7 +13,7 @@ func main() {
 		os.Exit(64)
 	}
 	in := os.Stdin
-	var exec executionMode = &replMode{}
+	var exec runner.Mode = &runner.Repl{}
 	if len(os.Args) == 2 {
 		file, err := os.Open(os.Args[1])
 		if err != nil {
@@ -24,29 +22,7 @@ func main() {
 		}
 		defer file.Close()
 		in = file
-		exec = &scriptMode{}
+		exec = &runner.Script{}
 	}
-	run(bufio.NewReader(in), exec)
-}
-
-func run(reader *bufio.Reader, exec executionMode) {
-	p := parser.NewParser(scanner.NewScanner(reader))
-	i := interpreter.NewInterpreter()
-	for {
-		exec.PreStmt()
-		if stmt, err := p.NextStatement(); err != nil {
-			fmt.Fprintln(os.Stderr, err.Error())
-			exec.PostError(err)
-		} else {
-			res, err := i.Interpret(stmt)
-			if err != nil {
-				fmt.Fprintln(os.Stderr, err.Error())
-				exec.PostError(err)
-			} else if !i.Done() {
-				exec.PostStmt(res)
-			} else {
-				break
-			}
-		}
-	}
+	runner.Run(bufio.NewReader(in), exec)
 }
