@@ -16,17 +16,18 @@ func Run(reader *bufio.Reader, mode Mode) {
 		mode.PreStmt()
 		if stmt, err := p.NextStatement(); err != nil {
 			fmt.Fprintln(os.Stderr, err.Error())
-			mode.PostError(err)
-		} else {
+			mode.PostGrammarError(err)
+		} else if mode.Execute() {
 			res, err := i.Interpret(stmt)
 			if err != nil {
 				fmt.Fprintln(os.Stderr, err.Error())
-				mode.PostError(err)
-			} else if !i.Done() {
-				mode.PostStmt(res)
-			} else {
+				mode.PostRuntimeError(err)
+			} else if i.Done() {
 				break
 			}
+			mode.PostStmt(res)
+		} else {
+			break
 		}
 	}
 }

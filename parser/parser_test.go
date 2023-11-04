@@ -47,19 +47,23 @@ func TestParserNil(t *testing.T) {
 }
 
 func TestParserWrongParen(t *testing.T) {
-	expectError(t, "(1 + 2(", "expected '\\)' after expression \\(at '\\('\\)")
+	expectErrors(t, "(1 + 2(", "expected '\\)' after expression \\(at '\\('\\)")
 }
 
 func TestParserUnclosedParen(t *testing.T) {
-	expectError(t, "(1 + 2", "expected '\\)' after expression \\(at end\\)")
+	expectErrors(t, "(1 + 2", "expected '\\)' after expression \\(at end\\)")
 }
 
 func TestParserLexicalErrors(t *testing.T) {
-	expectError(t, "(1 + 2%", "unexpected character")
+	expectErrors(t, "(1 + 2%", "unexpected character")
 }
 
 func TestParserMissingExpression(t *testing.T) {
-	expectError(t, "(", "expected expression")
+	expectErrors(t, "(", "expected expression")
+}
+
+func TestParserMissingExpressionFromStatement(t *testing.T) {
+	expectErrors(t, "print;", "expected expression")
 }
 
 func TestParserVarDecl(t *testing.T) {
@@ -67,7 +71,11 @@ func TestParserVarDecl(t *testing.T) {
 }
 
 func TestParserInvalidAssignmentTarget(t *testing.T) {
-	expectError(t, "1 = 2;", "invalid assignment target")
+	expectErrors(t, "1 = 2;", "invalid assignment target")
+}
+
+func TestParserMultiErr(t *testing.T) {
+	expectErrors(t, "1 = 2; print;", "invalid assignment target", "expected expression")
 }
 
 func TestParserAssert(t *testing.T) {
@@ -78,15 +86,25 @@ func TestParserStatements(t *testing.T) {
 	expectFormatted(t, "print 1;\n{\n\tvar x = 1;\n\tx = 2;\n}")
 }
 
-func expectError(t *testing.T, src string, re string) {
+func expectErrors(t *testing.T, src string, regexps ...string) {
 	t.Helper()
 	p := NewParser(scanner.NewScanner(bufio.NewReader(strings.NewReader(src))))
-	if _, err := p.NextStatement(); err == nil {
-		t.Errorf("expected error, got none")
-	} else {
-		if !regexp.MustCompile(re).MatchString(err.Error()) {
-			t.Errorf("expected '%s' to match '%v'", re, err.Error())
+	for {
+		if stmt, err := p.NextStatement(); err != nil {
+			if len(regexps) == 0 {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			re := regexps[0]
+			regexps = regexps[1:]
+			if !regexp.MustCompile(re).MatchString(err.Error()) {
+				t.Errorf("expected '%s' to match '%v'", re, err.Error())
+			}
+		} else if _, ok := stmt.(*ast.EndStmt); ok {
+			break
 		}
+	}
+	if len(regexps) > 0 {
+		t.Errorf("expected '%v' errors, got none", regexps)
 	}
 }
 

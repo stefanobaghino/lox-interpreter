@@ -34,6 +34,7 @@ func (p *Parser) NextStatement() (stmt ast.Stmt, err error) {
 	defer func() {
 		if e := recover(); e != nil {
 			if se, ok := e.(lox.Error); ok {
+				p.sync()
 				err = se
 			} else {
 				panic(fmt.Errorf("unexpected error during parsing: %v", e))
@@ -233,7 +234,7 @@ func (p *Parser) oneOf(types ...token.Type) bool {
 }
 
 func (p *Parser) expect(t token.Type, msg string) token.Token {
-	tok := p.pop()
+	tok := p.readToken()
 	if tok.Type != t {
 		if tok.Type == token.EOF {
 			msg = fmt.Sprintf("%s (at end)", msg)
@@ -242,6 +243,7 @@ func (p *Parser) expect(t token.Type, msg string) token.Token {
 		}
 		panic(&SyntaxError{tok.Line, msg})
 	}
+	p.pop()
 	return tok
 }
 
@@ -250,9 +252,36 @@ func (p *Parser) check(t token.Type) bool {
 }
 
 func (p *Parser) pop() token.Token {
+	if len(p.tokens) == 0 {
+		return p.readToken()
+	}
 	head, tail := p.tokens[0], p.tokens[1:]
 	p.tokens = tail
 	return head
+}
+
+func (p *Parser) sync() {
+	defer func() {
+		if e := recover(); e != nil {
+			// ignore lexical errors while syncing
+			if _, ok := e.(*scanner.LexicalError); !ok {
+				panic(e)
+			}
+		}
+	}()
+	p.pop()
+	for !syncPoint(p.readToken().Type) {
+		p.pop()
+	}
+}
+
+func syncPoint(t token.Type) bool {
+	switch t {
+	case token.CLASS, token.FUN, token.VAR, token.FOR, token.IF, token.WHILE, token.PRINT, token.RETURN, token.EOF:
+		return true
+	default:
+		return false
+	}
 }
 
 func (p *Parser) readToken() token.Token {
