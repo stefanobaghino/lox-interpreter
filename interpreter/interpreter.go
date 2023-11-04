@@ -88,6 +88,13 @@ func (i *Interpreter) VisitAssertStmt(stmt *ast.AssertStmt) interface{} {
 	return nil
 }
 
+func (i *Interpreter) VisitWhileStmt(stmt *ast.WhileStmt) interface{} {
+	for truthy(stmt.Condition.AcceptExpr(i)) {
+		stmt.Body.AcceptStmt(i)
+	}
+	return nil
+}
+
 func (i *Interpreter) VisitEndStmt(stmt *ast.EndStmt) interface{} {
 	i.done = true
 	return nil

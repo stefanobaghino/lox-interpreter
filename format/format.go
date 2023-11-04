@@ -98,6 +98,15 @@ func (f *Formatter) VisitEndStmt(stmt *ast.EndStmt) interface{} {
 	return ""
 }
 
+func (f *Formatter) VisitWhileStmt(stmt *ast.WhileStmt) interface{} {
+	builder := strings.Builder{}
+	builder.WriteString("while (")
+	builder.WriteString(f.fmtExpr(stmt.Condition))
+	builder.WriteString(") ")
+	builder.WriteString(f.Format(stmt.Body))
+	return builder.String()
+}
+
 func (f *Formatter) VisitAssignmentExpr(expr *ast.AssignmentExpr) interface{} {
 	builder := strings.Builder{}
 	builder.WriteString(expr.Name.Lexeme)

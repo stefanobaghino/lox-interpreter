@@ -60,6 +60,9 @@ func (p *Parser) statement() ast.Stmt {
 	if p.oneOf(token.LEFT_BRACE) {
 		return p.blockStatement()
 	}
+	if p.oneOf(token.WHILE) {
+		return p.whileStatement()
+	}
 	if p.oneOf(token.IF) {
 		return p.ifStatement()
 	}
@@ -121,6 +124,15 @@ func (p *Parser) ifStatement() ast.Stmt {
 		ifStmt.ElseBranch = &elseBranch
 	}
 	return ifStmt
+}
+
+func (p *Parser) whileStatement() ast.Stmt {
+	p.pop()
+	p.expect(token.LEFT_PAREN, "expected '(' after 'while'")
+	condition := p.expression()
+	p.expect(token.RIGHT_PAREN, "expected ')' after while condition")
+	body := p.statement()
+	return &ast.WhileStmt{Condition: condition, Body: body}
 }
 
 func (p *Parser) expressionStatement() ast.Stmt {

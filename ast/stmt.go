@@ -9,6 +9,7 @@ type StmtVisitor interface {
 	VisitIfStmt(*IfStmt) interface{}
 	VisitAssertStmt(*AssertStmt) interface{}
 	VisitPrintStmt(*PrintStmt) interface{}
+	VisitWhileStmt(*WhileStmt) interface{}
 	VisitEndStmt(*EndStmt) interface{}
 }
 
@@ -65,6 +66,15 @@ type PrintStmt struct {
 
 func (s *PrintStmt) AcceptStmt(v StmtVisitor) interface{} {
 	return v.VisitPrintStmt(s)
+}
+
+type WhileStmt struct {
+	Condition Expr
+	Body      Stmt
+}
+
+func (s *WhileStmt) AcceptStmt(v StmtVisitor) interface{} {
+	return v.VisitWhileStmt(s)
 }
 
 type EndStmt struct {
