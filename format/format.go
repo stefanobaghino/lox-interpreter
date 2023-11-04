@@ -200,8 +200,6 @@ func (f *Formatter) VisitLiteralExpr(expr *ast.LiteralExpr) interface{} {
 	switch expr.Value.(type) {
 	case string:
 		return fmt.Sprintf("%q", expr.Value)
-	case float64:
-		return fmt.Sprintf("%f", expr.Value)
 	case nil:
 		return "nil"
 	default:
