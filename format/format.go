@@ -125,6 +125,14 @@ func (f *Formatter) VisitAssertStmt(stmt *ast.AssertStmt) interface{} {
 	return builder.String()
 }
 
+func (f *Formatter) VisitReturnStmt(stmt *ast.ReturnStmt) interface{} {
+	builder := strings.Builder{}
+	builder.WriteString("return ")
+	builder.WriteString(f.fmtExpr(*stmt.Value))
+	builder.WriteRune(';')
+	return builder.String()
+}
+
 func (f *Formatter) VisitEndStmt(stmt *ast.EndStmt) interface{} {
 	return ""
 }

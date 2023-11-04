@@ -63,6 +63,9 @@ func (p *Parser) statement() ast.Stmt {
 	if p.oneOf(token.LEFT_BRACE) {
 		return p.blockStatement()
 	}
+	if p.oneOf(token.RETURN) {
+		return p.returnStatement()
+	}
 	if p.oneOf(token.FOR) {
 		return p.forStatement()
 	}
@@ -150,6 +153,16 @@ func (p *Parser) ifStatement() ast.Stmt {
 		ifStmt.ElseBranch = &elseBranch
 	}
 	return ifStmt
+}
+
+func (p *Parser) returnStatement() ast.Stmt {
+	tk := p.pop()
+	var value ast.Expr
+	if !p.oneOf(token.SEMICOLON) {
+		value = p.expression()
+	}
+	p.expect(token.SEMICOLON, "expected ';' after return value")
+	return &ast.ReturnStmt{Keyword: tk, Value: &value}
 }
 
 func (p *Parser) forStatement() ast.Stmt {

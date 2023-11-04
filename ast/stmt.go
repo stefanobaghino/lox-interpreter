@@ -11,6 +11,7 @@ type StmtVisitor interface {
 	VisitAssertStmt(*AssertStmt) interface{}
 	VisitPrintStmt(*PrintStmt) interface{}
 	VisitWhileStmt(*WhileStmt) interface{}
+	VisitReturnStmt(*ReturnStmt) interface{}
 	VisitEndStmt(*EndStmt) interface{}
 }
 
@@ -86,6 +87,15 @@ type WhileStmt struct {
 
 func (s *WhileStmt) AcceptStmt(v StmtVisitor) interface{} {
 	return v.VisitWhileStmt(s)
+}
+
+type ReturnStmt struct {
+	Keyword token.Token
+	Value   *Expr
+}
+
+func (s *ReturnStmt) AcceptStmt(v StmtVisitor) interface{} {
+	return v.VisitReturnStmt(s)
 }
 
 type EndStmt struct {

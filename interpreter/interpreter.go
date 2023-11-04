@@ -29,6 +29,10 @@ func (b *function) Call(i *Interpreter, arguments []interface{}) interface{} {
 	return b.call(i, arguments)
 }
 
+type Return struct {
+	value interface{}
+}
+
 type RuntimeError struct {
 	line    int
 	message string
@@ -77,7 +81,7 @@ func (i *Interpreter) Done() bool {
 
 func (i *Interpreter) VisitFunDeclStmt(stmt *ast.FunDeclStmt) interface{} {
 	i.env.Define(stmt.Name.Lexeme, func() interface{} {
-		return newFunction(len(stmt.Params), func(i *Interpreter, arguments []interface{}) interface{} {
+		return newFunction(len(stmt.Params), func(i *Interpreter, arguments []interface{}) (ret interface{}) {
 			env := NewEnv(i.env)
 			i.env = env
 			for index, param := range stmt.Params {
@@ -87,9 +91,16 @@ func (i *Interpreter) VisitFunDeclStmt(stmt *ast.FunDeclStmt) interface{} {
 			}
 			defer func() {
 				i.env = env.parent
+				if e := recover(); e != nil {
+					if r, ok := e.(*Return); ok {
+						ret = r.value
+					} else {
+						panic(e)
+					}
+				}
 			}()
 			stmt.Body.AcceptStmt(i)
-			return nil
+			return
 		})
 	})
 	return nil
@@ -143,6 +154,14 @@ func (i *Interpreter) VisitWhileStmt(stmt *ast.WhileStmt) interface{} {
 		stmt.Body.AcceptStmt(i)
 	}
 	return nil
+}
+
+func (i *Interpreter) VisitReturnStmt(stmt *ast.ReturnStmt) interface{} {
+	var value interface{}
+	if stmt.Value != nil {
+		value = (*stmt.Value).AcceptExpr(i)
+	}
+	panic(&Return{value: value})
 }
 
 func (i *Interpreter) VisitEndStmt(stmt *ast.EndStmt) interface{} {
