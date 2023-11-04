@@ -1,2 +1,2 @@
 // The first lox program
-print("hello, world")
+print("hello, world");

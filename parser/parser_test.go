@@ -3,6 +3,7 @@ package parser
 import (
 	"bufio"
 	"lox/ast"
+	"lox/format"
 	"lox/scanner"
 	"regexp"
 	"strings"
@@ -10,78 +11,119 @@ import (
 )
 
 func TestParserOne(t *testing.T) {
-	expectExpression(t, "1", "1")
+	expectFormatted(t, "1;")
 }
 
 func TestParserBinary(t *testing.T) {
-	expectExpression(t, "1 + 2", "(+ 1 2)")
+	expectFormatted(t, "1 + 2;")
 }
 
 func TestParserUnary(t *testing.T) {
-	expectExpression(t, "-1", "(- 1)")
+	expectFormatted(t, "-1;")
 }
 
 func TestParserUnaryAndBinary(t *testing.T) {
-	expectExpression(t, "-1 * -1", "(* (- 1) (- 1))")
+	expectFormatted(t, "-1 * -1;")
 }
 
 func TestParserGrouping(t *testing.T) {
-	expectExpression(t, "1 * (2 + 3)", "(* 1 (group (+ 2 3)))")
+	expectFormatted(t, "1 * (2 + 3);")
 }
 
 func TestParserBinaryAssociativity(t *testing.T) {
-	expectExpression(t, "1 + 2 + 3", "(+ (+ 1 2) 3)")
+	expectFormatted(t, "1 + 2 + 3;")
 }
 
 func TestParserBooleans(t *testing.T) {
-	expectExpression(t, "true == !false", "(== true (! false))")
+	expectFormatted(t, "true == !false;")
 }
 
 func TestParserComparisons(t *testing.T) {
-	expectExpression(t, "0 <= 1 >= 2", "(>= (<= 0 1) 2)")
+	expectFormatted(t, "0 <= 1 >= 2;")
 }
 
 func TestParserNil(t *testing.T) {
-	expectExpression(t, "nil - nil == 0", "(== (- nil nil) 0)")
-}
-
-func TestParserEmpty(t *testing.T) {
-	expectError(t, "", "expected expression")
+	expectFormatted(t, "nil - nil == 0;")
 }
 
 func TestParserWrongParen(t *testing.T) {
-	expectError(t, "(1 + 2(", "expected '\\)' after expression \\(at '\\('\\)")
+	expectErrors(t, "(1 + 2(", "expected '\\)' after expression \\(at '\\('\\)")
 }
 
 func TestParserUnclosedParen(t *testing.T) {
-	expectError(t, "(1 + 2", "expected '\\)' after expression \\(at end\\)")
+	expectErrors(t, "(1 + 2", "expected '\\)' after expression \\(at end\\)")
 }
 
 func TestParserLexicalErrors(t *testing.T) {
-	expectError(t, "(1 + 2%", "unexpected character")
+	expectErrors(t, "(1 + 2%", "unexpected character")
 }
 
-func expectError(t *testing.T, src string, re string) {
+func TestParserMissingExpression(t *testing.T) {
+	expectErrors(t, "(", "expected expression")
+}
+
+func TestParserMissingExpressionFromStatement(t *testing.T) {
+	expectErrors(t, "print;", "expected expression")
+}
+
+func TestParserVarDecl(t *testing.T) {
+	expectFormatted(t, "var x = 1;")
+}
+
+func TestParserInvalidAssignmentTarget(t *testing.T) {
+	expectErrors(t, "1 = 2;", "invalid assignment target")
+}
+
+func TestParserMultiErr(t *testing.T) {
+	expectErrors(t, "1 = 2; print;", "invalid assignment target", "expected expression")
+}
+
+func TestParserAssert(t *testing.T) {
+	expectFormatted(t, "assert true;")
+}
+
+func TestParserStatements(t *testing.T) {
+	expectFormatted(t, "print 1;\n{\n\tvar x = 1;\n\tx = 2;\n}")
+}
+
+func expectErrors(t *testing.T, src string, regexps ...string) {
 	t.Helper()
 	p := NewParser(scanner.NewScanner(bufio.NewReader(strings.NewReader(src))))
-	if _, err := p.Parse(); err == nil {
-		t.Errorf("expected error, got none")
-	} else {
-		if !regexp.MustCompile(re).MatchString(err.Error()) {
-			t.Errorf("expected '%s' to match '%v'", re, err.Error())
+	for {
+		if stmt, err := p.NextStatement(); err != nil {
+			if len(regexps) == 0 {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			re := regexps[0]
+			regexps = regexps[1:]
+			if !regexp.MustCompile(re).MatchString(err.Error()) {
+				t.Errorf("expected '%s' to match '%v'", re, err.Error())
+			}
+		} else if _, ok := stmt.(*ast.EndStmt); ok {
+			break
 		}
+	}
+	if len(regexps) > 0 {
+		t.Errorf("expected '%v' errors, got none", regexps)
 	}
 }
 
-func expectExpression(t *testing.T, src string, expected string) {
+func expectFormatted(t *testing.T, src string) {
 	t.Helper()
 	p := NewParser(scanner.NewScanner(bufio.NewReader(strings.NewReader(src))))
-	if e, err := p.Parse(); err != nil {
-		t.Error(err)
-	} else {
-		result := ast.Print(e)
-		if result != expected {
-			t.Errorf("expected '%s', got '%s'", expected, result)
+	f := format.NewFormatter()
+	builder := strings.Builder{}
+	for {
+		if stmt, err := p.NextStatement(); err != nil {
+			t.Error(err)
+		} else if _, ok := stmt.(*ast.EndStmt); !ok {
+			builder.WriteString(f.Format(stmt))
+		} else {
+			break
 		}
+	}
+	result := builder.String()
+	if result != src {
+		t.Errorf("expected '%s', got '%s'", src, result)
 	}
 }

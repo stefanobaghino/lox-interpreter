@@ -1,0 +1,5 @@
+// multiple errors
+print "hello";
+1 = 2;
+print;
+print "hello";

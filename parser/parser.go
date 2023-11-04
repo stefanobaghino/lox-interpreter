@@ -30,22 +30,106 @@ func NewParser(scanner *scanner.Scanner) *Parser {
 	return &Parser{scanner: scanner}
 }
 
-func (p *Parser) Parse() (expr ast.Expr, err error) {
+func (p *Parser) NextStatement() (stmt ast.Stmt, err error) {
 	defer func() {
 		if e := recover(); e != nil {
 			if se, ok := e.(lox.Error); ok {
+				p.sync()
 				err = se
 			} else {
 				panic(fmt.Errorf("unexpected error during parsing: %v", e))
 			}
 		}
 	}()
-	expr = p.expression()
-	return
+	return p.statement(), nil
+}
+
+func (p *Parser) statement() ast.Stmt {
+	if p.oneOf(token.EOF) {
+		return p.endStatement()
+	}
+	if p.oneOf(token.VAR) {
+		return p.varDeclStatement()
+	}
+	if p.oneOf(token.ASSERT) {
+		return p.assertStatement()
+	}
+	if p.oneOf(token.PRINT) {
+		return p.printStatement()
+	}
+	if p.oneOf(token.LEFT_BRACE) {
+		return p.blockStatement()
+	}
+	return p.expressionStatement()
+}
+
+func (p *Parser) endStatement() ast.Stmt {
+	p.pop()
+	return &ast.EndStmt{}
+}
+
+func (p *Parser) varDeclStatement() ast.Stmt {
+	p.pop()
+	p.readToken()
+	name := p.expect(token.IDENTIFIER, "expected identifier after 'var'")
+	var initializer ast.Expr
+	if p.oneOf(token.EQUAL) {
+		p.pop()
+		initializer = p.expression()
+	}
+	p.expect(token.SEMICOLON, "expected ';' after variable declaration")
+	return &ast.VarDeclStmt{Name: name, Initializer: &initializer}
+}
+
+func (p *Parser) assertStatement() ast.Stmt {
+	p.pop()
+	expr := p.expression()
+	p.expect(token.SEMICOLON, "expected ';' after expression")
+	return &ast.AssertStmt{Expression: expr}
+}
+
+func (p *Parser) printStatement() ast.Stmt {
+	p.pop()
+	expr := p.expression()
+	p.expect(token.SEMICOLON, "expected ';' after expression")
+	return &ast.PrintStmt{Expression: expr}
+}
+
+func (p *Parser) blockStatement() ast.Stmt {
+	p.pop()
+	statements := []ast.Stmt{}
+	for !p.oneOf(token.RIGHT_BRACE) {
+		statements = append(statements, p.statement())
+	}
+	p.expect(token.RIGHT_BRACE, "expected '}' after block")
+	return &ast.BlockStmt{Statements: statements}
+}
+
+func (p *Parser) expressionStatement() ast.Stmt {
+	expr := p.expression()
+	p.expect(token.SEMICOLON, "expected ';' after expression")
+	return &ast.ExprStmt{Expression: expr}
 }
 
 func (p *Parser) expression() ast.Expr {
-	return p.equality()
+	return p.assignment()
+}
+
+func (p *Parser) assignment() ast.Expr {
+	expr := p.equality()
+
+	if p.oneOf(token.EQUAL) {
+		equals := p.pop()
+		value := p.assignment()
+
+		if varExpr, ok := expr.(*ast.VarExpr); ok {
+			return &ast.AssignmentExpr{Name: varExpr.Name, Value: value}
+		}
+
+		panic(&SyntaxError{equals.Line, "invalid assignment target"})
+	}
+
+	return expr
 }
 
 func (p *Parser) equality() ast.Expr {
@@ -107,6 +191,10 @@ func (p *Parser) unary() ast.Expr {
 }
 
 func (p *Parser) primary() ast.Expr {
+	if p.oneOf(token.IDENTIFIER) {
+		name := p.pop()
+		return &ast.VarExpr{Name: name}
+	}
 	if p.oneOf(token.FALSE) {
 		p.pop()
 		return &ast.LiteralExpr{Value: false}
@@ -145,8 +233,8 @@ func (p *Parser) oneOf(types ...token.Type) bool {
 	return false
 }
 
-func (p *Parser) expect(t token.Type, msg string) {
-	tok := p.pop()
+func (p *Parser) expect(t token.Type, msg string) token.Token {
+	tok := p.readToken()
 	if tok.Type != t {
 		if tok.Type == token.EOF {
 			msg = fmt.Sprintf("%s (at end)", msg)
@@ -155,6 +243,8 @@ func (p *Parser) expect(t token.Type, msg string) {
 		}
 		panic(&SyntaxError{tok.Line, msg})
 	}
+	p.pop()
+	return tok
 }
 
 func (p *Parser) check(t token.Type) bool {
@@ -162,9 +252,36 @@ func (p *Parser) check(t token.Type) bool {
 }
 
 func (p *Parser) pop() token.Token {
+	if len(p.tokens) == 0 {
+		return p.readToken()
+	}
 	head, tail := p.tokens[0], p.tokens[1:]
 	p.tokens = tail
 	return head
+}
+
+func (p *Parser) sync() {
+	defer func() {
+		if e := recover(); e != nil {
+			// ignore lexical errors while syncing
+			if _, ok := e.(*scanner.LexicalError); !ok {
+				panic(e)
+			}
+		}
+	}()
+	p.pop()
+	for !syncPoint(p.readToken().Type) {
+		p.pop()
+	}
+}
+
+func syncPoint(t token.Type) bool {
+	switch t {
+	case token.CLASS, token.FUN, token.VAR, token.FOR, token.IF, token.WHILE, token.PRINT, token.RETURN, token.EOF:
+		return true
+	default:
+		return false
+	}
 }
 
 func (p *Parser) readToken() token.Token {

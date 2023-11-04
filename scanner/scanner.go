@@ -207,6 +207,7 @@ func (s *Scanner) mkLiteral(t token.Type, literal interface{}) token.Token {
 
 var keywords = map[string]token.Type{
 	"and":    token.AND,
+	"assert": token.ASSERT,
 	"class":  token.CLASS,
 	"else":   token.ELSE,
 	"false":  token.FALSE,
