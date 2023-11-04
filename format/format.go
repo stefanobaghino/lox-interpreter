@@ -7,7 +7,7 @@ import (
 )
 
 type Formatter struct {
-	indent int
+	indentation int
 }
 
 func (f *Formatter) fmtExpr(expr ast.Expr) string {
@@ -20,11 +20,30 @@ func NewFormatter() *Formatter {
 
 func (f *Formatter) Format(stmt ast.Stmt) string {
 	builder := strings.Builder{}
-	for i := 0; i < f.indent; i++ {
-		builder.WriteString("\t")
-	}
+	f.indent(&builder)
 	builder.WriteString(stmt.AcceptStmt(f).(string))
 	return builder.String()
+}
+
+func (f *Formatter) block(stmts func() []ast.Stmt) string {
+	builder := strings.Builder{}
+	builder.WriteRune('\n')
+	f.indent(&builder)
+	builder.WriteRune('{')
+	f.indentation++
+	for _, stmt := range stmts() {
+		builder.WriteRune('\n')
+		builder.WriteString(f.Format(stmt))
+	}
+	builder.WriteRune('\n')
+	builder.WriteRune('}')
+	return builder.String()
+}
+
+func (f *Formatter) indent(builder *strings.Builder) {
+	for i := 0; i < f.indentation; i++ {
+		builder.WriteRune('\t')
+	}
 }
 
 func (f *Formatter) VisitVarDeclStmt(stmt *ast.VarDeclStmt) interface{} {
@@ -40,26 +59,37 @@ func (f *Formatter) VisitVarDeclStmt(stmt *ast.VarDeclStmt) interface{} {
 }
 
 func (f *Formatter) VisitBlockStmt(stmt *ast.BlockStmt) interface{} {
-	builder := strings.Builder{}
-	builder.WriteRune('\n')
-	for i := 0; i < f.indent; i++ {
-		builder.WriteString("\t")
-	}
-	builder.WriteRune('{')
-	f.indent++
-	for _, stmt := range stmt.Statements {
-		builder.WriteRune('\n')
-		builder.WriteString(f.Format(stmt))
-	}
-	builder.WriteRune('\n')
-	builder.WriteRune('}')
-	return builder.String()
+	return f.block(func() []ast.Stmt { return stmt.Statements })
 }
 
 func (f *Formatter) VisitExprStmt(stmt *ast.ExprStmt) interface{} {
 	builder := strings.Builder{}
 	builder.WriteString(f.fmtExpr(stmt.Expression))
 	builder.WriteRune(';')
+	return builder.String()
+}
+
+func (f *Formatter) VisitIfStmt(stmt *ast.IfStmt) interface{} {
+	builder := strings.Builder{}
+	builder.WriteString("if (")
+	builder.WriteString(f.fmtExpr(stmt.Condition))
+	builder.WriteRune(')')
+	thenBlock := *stmt.ThenBranch
+	if _, ok := thenBlock.(*ast.BlockStmt); !ok {
+		thenBlock = &ast.BlockStmt{Statements: []ast.Stmt{thenBlock}}
+	}
+	builder.WriteString(f.Format(thenBlock))
+	if stmt.ElseBranch != nil {
+		builder.WriteRune('\n')
+		f.indent(&builder)
+		builder.WriteString("else")
+
+		elseBlock := *stmt.ElseBranch
+		if _, ok := elseBlock.(*ast.BlockStmt); !ok {
+			elseBlock = &ast.BlockStmt{Statements: []ast.Stmt{elseBlock}}
+		}
+		builder.WriteString(f.Format(elseBlock))
+	}
 	return builder.String()
 }
 
@@ -83,11 +113,30 @@ func (f *Formatter) VisitEndStmt(stmt *ast.EndStmt) interface{} {
 	return ""
 }
 
+func (f *Formatter) VisitWhileStmt(stmt *ast.WhileStmt) interface{} {
+	builder := strings.Builder{}
+	builder.WriteString("while (")
+	builder.WriteString(f.fmtExpr(stmt.Condition))
+	builder.WriteRune(')')
+	builder.WriteString(f.Format(stmt.Body))
+	return builder.String()
+}
+
 func (f *Formatter) VisitAssignmentExpr(expr *ast.AssignmentExpr) interface{} {
 	builder := strings.Builder{}
 	builder.WriteString(expr.Name.Lexeme)
 	builder.WriteString(" = ")
 	builder.WriteString(f.fmtExpr(expr.Value))
+	return builder.String()
+}
+
+func (f *Formatter) VisitLogicalExpr(expr *ast.LogicalExpr) interface{} {
+	builder := strings.Builder{}
+	builder.WriteString(f.fmtExpr(expr.Left))
+	builder.WriteRune(' ')
+	builder.WriteString(expr.Operator.Lexeme)
+	builder.WriteRune(' ')
+	builder.WriteString(f.fmtExpr(expr.Right))
 	return builder.String()
 }
 

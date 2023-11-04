@@ -60,6 +60,15 @@ func (p *Parser) statement() ast.Stmt {
 	if p.oneOf(token.LEFT_BRACE) {
 		return p.blockStatement()
 	}
+	if p.oneOf(token.FOR) {
+		return p.forStatement()
+	}
+	if p.oneOf(token.WHILE) {
+		return p.whileStatement()
+	}
+	if p.oneOf(token.IF) {
+		return p.ifStatement()
+	}
 	return p.expressionStatement()
 }
 
@@ -105,6 +114,65 @@ func (p *Parser) blockStatement() ast.Stmt {
 	return &ast.BlockStmt{Statements: statements}
 }
 
+func (p *Parser) ifStatement() ast.Stmt {
+	p.pop()
+	p.expect(token.LEFT_PAREN, "expected '(' after 'if'")
+	condition := p.expression()
+	p.expect(token.RIGHT_PAREN, "expected ')' after if condition")
+	thenBranch := p.statement()
+	ifStmt := &ast.IfStmt{Condition: condition, ThenBranch: &thenBranch}
+	if p.oneOf(token.ELSE) {
+		p.pop()
+		elseBranch := p.statement()
+		ifStmt.ElseBranch = &elseBranch
+	}
+	return ifStmt
+}
+
+func (p *Parser) forStatement() ast.Stmt {
+	p.pop()
+	p.expect(token.LEFT_PAREN, "expected '(' after 'for'")
+	var initializer ast.Stmt
+	if p.oneOf(token.SEMICOLON) {
+		p.pop()
+	} else if p.oneOf(token.VAR) {
+		initializer = p.varDeclStatement()
+	} else {
+		initializer = p.expressionStatement()
+	}
+	var condition ast.Expr
+	if !p.oneOf(token.SEMICOLON) {
+		condition = p.expression()
+	}
+	p.expect(token.SEMICOLON, "expected ';' after loop condition")
+	var increment ast.Expr
+	if !p.oneOf(token.RIGHT_PAREN) {
+		increment = p.expression()
+	}
+	p.expect(token.RIGHT_PAREN, "expected ')' after for clauses")
+	body := p.statement()
+	if increment != nil {
+		body = &ast.BlockStmt{Statements: []ast.Stmt{body, &ast.ExprStmt{Expression: increment}}}
+	}
+	if condition == nil {
+		condition = &ast.LiteralExpr{Value: true}
+	}
+	body = &ast.WhileStmt{Condition: condition, Body: body}
+	if initializer != nil {
+		body = &ast.BlockStmt{Statements: []ast.Stmt{initializer, body}}
+	}
+	return body
+}
+
+func (p *Parser) whileStatement() ast.Stmt {
+	p.pop()
+	p.expect(token.LEFT_PAREN, "expected '(' after 'while'")
+	condition := p.expression()
+	p.expect(token.RIGHT_PAREN, "expected ')' after while condition")
+	body := p.statement()
+	return &ast.WhileStmt{Condition: condition, Body: body}
+}
+
 func (p *Parser) expressionStatement() ast.Stmt {
 	expr := p.expression()
 	p.expect(token.SEMICOLON, "expected ';' after expression")
@@ -116,7 +184,7 @@ func (p *Parser) expression() ast.Expr {
 }
 
 func (p *Parser) assignment() ast.Expr {
-	expr := p.equality()
+	expr := p.or()
 
 	if p.oneOf(token.EQUAL) {
 		equals := p.pop()
@@ -130,6 +198,30 @@ func (p *Parser) assignment() ast.Expr {
 	}
 
 	return expr
+}
+
+func (p *Parser) or() ast.Expr {
+	left := p.and()
+
+	for p.oneOf(token.OR) {
+		operator := p.pop()
+		right := p.and()
+		left = &ast.LogicalExpr{Left: left, Operator: operator, Right: right}
+	}
+
+	return left
+}
+
+func (p *Parser) and() ast.Expr {
+	left := p.equality()
+
+	for p.oneOf(token.AND) {
+		operator := p.pop()
+		right := p.equality()
+		left = &ast.LogicalExpr{Left: left, Operator: operator, Right: right}
+	}
+
+	return left
 }
 
 func (p *Parser) equality() ast.Expr {

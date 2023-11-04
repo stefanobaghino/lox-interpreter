@@ -66,6 +66,15 @@ func (i *Interpreter) VisitBlockStmt(stmt *ast.BlockStmt) interface{} {
 	return nil
 }
 
+func (i *Interpreter) VisitIfStmt(stmt *ast.IfStmt) interface{} {
+	if truthy(stmt.Condition.AcceptExpr(i)) {
+		(*stmt.ThenBranch).AcceptStmt(i)
+	} else if stmt.ElseBranch != nil {
+		(*stmt.ElseBranch).AcceptStmt(i)
+	}
+	return nil
+}
+
 func (i *Interpreter) VisitPrintStmt(stmt *ast.PrintStmt) interface{} {
 	fmt.Println(stmt.Expression.AcceptExpr(i))
 	return nil
@@ -75,6 +84,13 @@ func (i *Interpreter) VisitAssertStmt(stmt *ast.AssertStmt) interface{} {
 	assertion := stmt.Expression.AcceptExpr(i)
 	if !truthy(assertion) {
 		panic(&RuntimeError{line: 0 /*TODO*/, message: "assertion failed"})
+	}
+	return nil
+}
+
+func (i *Interpreter) VisitWhileStmt(stmt *ast.WhileStmt) interface{} {
+	for truthy(stmt.Condition.AcceptExpr(i)) {
+		stmt.Body.AcceptStmt(i)
 	}
 	return nil
 }
@@ -95,6 +111,20 @@ func (i *Interpreter) VisitAssignmentExpr(expr *ast.AssignmentExpr) interface{} 
 		return value
 	})
 	return value
+}
+
+func (i *Interpreter) VisitLogicalExpr(expr *ast.LogicalExpr) interface{} {
+	left := expr.Left.AcceptExpr(i)
+	if expr.Operator.Type == token.OR {
+		if truthy(left) {
+			return left
+		}
+	} else {
+		if !truthy(left) {
+			return left
+		}
+	}
+	return expr.Right.AcceptExpr(i)
 }
 
 func (i *Interpreter) VisitBinaryExpr(expr *ast.BinaryExpr) interface{} {

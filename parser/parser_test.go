@@ -86,6 +86,10 @@ func TestParserStatements(t *testing.T) {
 	expectFormatted(t, "print 1;\n{\n\tvar x = 1;\n\tx = 2;\n}")
 }
 
+func TestParserIf(t *testing.T) {
+	expectFormatted(t, "if (true)\n{\n\tprint 1;\n}")
+}
+
 func expectErrors(t *testing.T, src string, regexps ...string) {
 	t.Helper()
 	p := NewParser(scanner.NewScanner(bufio.NewReader(strings.NewReader(src))))

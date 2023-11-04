@@ -1,0 +1,22 @@
+// simple conditional
+var a = 1;
+var error = "this should not be printed";
+
+if (a != 1) print error;
+
+if (a == 1) print "ok";
+
+if (a == 1) {
+  print "ok";
+  print "ok";
+}
+
+if (a == 1) {
+  print "ok";
+} else {
+  print error;
+}
+
+if (a != 1) print error; else print "ok";
+
+print "done.";
