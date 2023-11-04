@@ -6,6 +6,7 @@ type StmtVisitor interface {
 	VisitVarDeclStmt(*VarDeclStmt) interface{}
 	VisitBlockStmt(*BlockStmt) interface{}
 	VisitExprStmt(*ExprStmt) interface{}
+	VisitIfStmt(*IfStmt) interface{}
 	VisitAssertStmt(*AssertStmt) interface{}
 	VisitPrintStmt(*PrintStmt) interface{}
 	VisitEndStmt(*EndStmt) interface{}
@@ -38,6 +39,16 @@ type ExprStmt struct {
 
 func (s *ExprStmt) AcceptStmt(v StmtVisitor) interface{} {
 	return v.VisitExprStmt(s)
+}
+
+type IfStmt struct {
+	Condition  Expr
+	ThenBranch *Stmt
+	ElseBranch *Stmt
+}
+
+func (s *IfStmt) AcceptStmt(v StmtVisitor) interface{} {
+	return v.VisitIfStmt(s)
 }
 
 type AssertStmt struct {

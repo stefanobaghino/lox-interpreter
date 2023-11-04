@@ -60,6 +60,9 @@ func (p *Parser) statement() ast.Stmt {
 	if p.oneOf(token.LEFT_BRACE) {
 		return p.blockStatement()
 	}
+	if p.oneOf(token.IF) {
+		return p.ifStatement()
+	}
 	return p.expressionStatement()
 }
 
@@ -103,6 +106,21 @@ func (p *Parser) blockStatement() ast.Stmt {
 	}
 	p.expect(token.RIGHT_BRACE, "expected '}' after block")
 	return &ast.BlockStmt{Statements: statements}
+}
+
+func (p *Parser) ifStatement() ast.Stmt {
+	p.pop()
+	p.expect(token.LEFT_PAREN, "expected '(' after 'if'")
+	condition := p.expression()
+	p.expect(token.RIGHT_PAREN, "expected ')' after if condition")
+	thenBranch := p.statement()
+	ifStmt := &ast.IfStmt{Condition: condition, ThenBranch: &thenBranch}
+	if p.oneOf(token.ELSE) {
+		p.pop()
+		elseBranch := p.statement()
+		ifStmt.ElseBranch = &elseBranch
+	}
+	return ifStmt
 }
 
 func (p *Parser) expressionStatement() ast.Stmt {

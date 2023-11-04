@@ -7,7 +7,7 @@ import (
 )
 
 type Formatter struct {
-	indent int
+	indentation int
 }
 
 func (f *Formatter) fmtExpr(expr ast.Expr) string {
@@ -20,11 +20,15 @@ func NewFormatter() *Formatter {
 
 func (f *Formatter) Format(stmt ast.Stmt) string {
 	builder := strings.Builder{}
-	for i := 0; i < f.indent; i++ {
-		builder.WriteString("\t")
-	}
+	f.indent(builder)
 	builder.WriteString(stmt.AcceptStmt(f).(string))
 	return builder.String()
+}
+
+func (f *Formatter) indent(builder strings.Builder) {
+	for i := 0; i < f.indentation; i++ {
+		builder.WriteString("\t")
+	}
 }
 
 func (f *Formatter) VisitVarDeclStmt(stmt *ast.VarDeclStmt) interface{} {
@@ -42,11 +46,9 @@ func (f *Formatter) VisitVarDeclStmt(stmt *ast.VarDeclStmt) interface{} {
 func (f *Formatter) VisitBlockStmt(stmt *ast.BlockStmt) interface{} {
 	builder := strings.Builder{}
 	builder.WriteRune('\n')
-	for i := 0; i < f.indent; i++ {
-		builder.WriteString("\t")
-	}
+	f.indent(builder)
 	builder.WriteRune('{')
-	f.indent++
+	f.indentation++
 	for _, stmt := range stmt.Statements {
 		builder.WriteRune('\n')
 		builder.WriteString(f.Format(stmt))
@@ -60,6 +62,19 @@ func (f *Formatter) VisitExprStmt(stmt *ast.ExprStmt) interface{} {
 	builder := strings.Builder{}
 	builder.WriteString(f.fmtExpr(stmt.Expression))
 	builder.WriteRune(';')
+	return builder.String()
+}
+
+func (f *Formatter) VisitIfStmt(stmt *ast.IfStmt) interface{} {
+	builder := strings.Builder{}
+	builder.WriteString("if (")
+	builder.WriteString(f.fmtExpr(stmt.Condition))
+	builder.WriteString(") ")
+	builder.WriteString(f.Format(*stmt.ThenBranch))
+	if stmt.ElseBranch != nil {
+		builder.WriteString(" else ")
+		builder.WriteString(f.Format(*stmt.ElseBranch))
+	}
 	return builder.String()
 }
 

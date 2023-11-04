@@ -66,6 +66,15 @@ func (i *Interpreter) VisitBlockStmt(stmt *ast.BlockStmt) interface{} {
 	return nil
 }
 
+func (i *Interpreter) VisitIfStmt(stmt *ast.IfStmt) interface{} {
+	if truthy(stmt.Condition.AcceptExpr(i)) {
+		(*stmt.ThenBranch).AcceptStmt(i)
+	} else if stmt.ElseBranch != nil {
+		(*stmt.ElseBranch).AcceptStmt(i)
+	}
+	return nil
+}
+
 func (i *Interpreter) VisitPrintStmt(stmt *ast.PrintStmt) interface{} {
 	fmt.Println(stmt.Expression.AcceptExpr(i))
 	return nil
