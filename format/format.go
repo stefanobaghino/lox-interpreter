@@ -150,6 +150,20 @@ func (f *Formatter) VisitBinaryExpr(expr *ast.BinaryExpr) interface{} {
 	return builder.String()
 }
 
+func (f *Formatter) VisitCallExpr(expr *ast.CallExpr) interface{} {
+	builder := strings.Builder{}
+	builder.WriteString(f.fmtExpr(expr.Callee))
+	builder.WriteRune('(')
+	for i, arg := range expr.Arguments {
+		if i > 0 {
+			builder.WriteString(", ")
+		}
+		builder.WriteString(f.fmtExpr(arg))
+	}
+	builder.WriteRune(')')
+	return builder.String()
+}
+
 func (f *Formatter) VisitGroupingExpr(expr *ast.GroupingExpr) interface{} {
 	builder := strings.Builder{}
 	builder.WriteRune('(')

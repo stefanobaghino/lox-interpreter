@@ -279,7 +279,28 @@ func (p *Parser) unary() ast.Expr {
 		return &ast.UnaryExpr{Operator: operator, Right: right}
 	}
 
-	return p.primary()
+	return p.call()
+}
+
+func (p *Parser) call() ast.Expr {
+	expr := p.primary()
+	for p.oneOf(token.LEFT_PAREN) {
+		p.pop()
+		arguments := []ast.Expr{}
+		if !p.oneOf(token.RIGHT_PAREN) {
+			arguments = append(arguments, p.expression())
+		}
+		for p.oneOf(token.COMMA) {
+			p.pop()
+			arguments = append(arguments, p.expression())
+			if len(arguments) >= 255 {
+				panic(&SyntaxError{p.tokens[0].Line, "cannot have more than 255 arguments"})
+			}
+		}
+		p.expect(token.RIGHT_PAREN, "expected ')' after arguments")
+		expr = &ast.CallExpr{Callee: expr, Arguments: arguments}
+	}
+	return expr
 }
 
 func (p *Parser) primary() ast.Expr {

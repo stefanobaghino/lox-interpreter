@@ -4,7 +4,30 @@ import (
 	"fmt"
 	"lox/ast"
 	"lox/token"
+	"time"
 )
+
+type Callable interface {
+	Arity() int
+	Call(*Interpreter, []interface{}) interface{}
+}
+
+type builtin struct {
+	arity int
+	call  func(*Interpreter, []interface{}) interface{}
+}
+
+func newBuiltin(arity int, call func(*Interpreter, []interface{}) interface{}) *builtin {
+	return &builtin{arity: arity, call: call}
+}
+
+func (b *builtin) Arity() int {
+	return b.arity
+}
+
+func (b *builtin) Call(i *Interpreter, arguments []interface{}) interface{} {
+	return b.call(i, arguments)
+}
 
 type RuntimeError struct {
 	line    int
@@ -16,12 +39,19 @@ func (e RuntimeError) Error() string {
 }
 
 type Interpreter struct {
-	env  *Env
-	done bool
+	globals *Env
+	env     *Env
+	done    bool
 }
 
 func NewInterpreter() *Interpreter {
-	return &Interpreter{env: NewGlobalEnv()}
+	globals := NewGlobalEnv()
+	globals.Define("clock", func() interface{} {
+		return newBuiltin(0, func(i *Interpreter, arguments []interface{}) interface{} {
+			return float64(time.Now().Unix())
+		})
+	})
+	return &Interpreter{globals: globals, env: globals}
 }
 
 func (i *Interpreter) Interpret(stmt ast.Stmt) (result interface{}, err error) {
@@ -229,6 +259,22 @@ func (i *Interpreter) VisitBinaryExpr(expr *ast.BinaryExpr) interface{} {
 		}
 	}
 	panic(fmt.Errorf("unexpected operator: %v", expr.Operator))
+}
+
+func (i *Interpreter) VisitCallExpr(expr *ast.CallExpr) interface{} {
+	callee := expr.Callee.AcceptExpr(i)
+	var arguments []interface{}
+	for _, arg := range expr.Arguments {
+		arguments = append(arguments, arg.AcceptExpr(i))
+	}
+	if function, ok := callee.(Callable); ok {
+		if len(arguments) != function.Arity() {
+			panic(&RuntimeError{line: expr.Paren.Line, message: fmt.Sprintf("expected %d arguments but got %d", function.Arity(), len(arguments))})
+		}
+		return function.Call(i, arguments)
+	} else {
+		panic(&RuntimeError{line: expr.Paren.Line, message: "identifier is not a function"})
+	}
 }
 
 func (i *Interpreter) VisitGroupingExpr(expr *ast.GroupingExpr) interface{} {

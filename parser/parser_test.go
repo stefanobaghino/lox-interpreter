@@ -46,8 +46,8 @@ func TestParserNil(t *testing.T) {
 	expectFormatted(t, "nil - nil == 0;")
 }
 
-func TestParserWrongParen(t *testing.T) {
-	expectErrors(t, "(1 + 2(", "expected '\\)' after expression \\(at '\\('\\)")
+func TestParserWrongTokenAfterParen(t *testing.T) {
+	expectErrors(t, "(1 + 2var", "expected '\\)' after expression \\(at 'var'\\)")
 }
 
 func TestParserUnclosedParen(t *testing.T) {
@@ -88,6 +88,11 @@ func TestParserStatements(t *testing.T) {
 
 func TestParserIf(t *testing.T) {
 	expectFormatted(t, "if (true)\n{\n\tprint 1;\n}")
+}
+
+func TestParserCall(t *testing.T) {
+	expectFormatted(t, "foo(1);")
+	expectFormatted(t, "curried(1)(2);")
 }
 
 func expectErrors(t *testing.T, src string, regexps ...string) {
