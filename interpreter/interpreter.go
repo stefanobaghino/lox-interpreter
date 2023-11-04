@@ -106,6 +106,20 @@ func (i *Interpreter) VisitAssignmentExpr(expr *ast.AssignmentExpr) interface{} 
 	return value
 }
 
+func (i *Interpreter) VisitLogicalExpr(expr *ast.LogicalExpr) interface{} {
+	left := expr.Left.AcceptExpr(i)
+	if expr.Operator.Type == token.OR {
+		if truthy(left) {
+			return left
+		}
+	} else {
+		if !truthy(left) {
+			return left
+		}
+	}
+	return expr.Right.AcceptExpr(i)
+}
+
 func (i *Interpreter) VisitBinaryExpr(expr *ast.BinaryExpr) interface{} {
 	left := expr.Left.AcceptExpr(i)
 	right := expr.Right.AcceptExpr(i)

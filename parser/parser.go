@@ -134,7 +134,7 @@ func (p *Parser) expression() ast.Expr {
 }
 
 func (p *Parser) assignment() ast.Expr {
-	expr := p.equality()
+	expr := p.or()
 
 	if p.oneOf(token.EQUAL) {
 		equals := p.pop()
@@ -148,6 +148,30 @@ func (p *Parser) assignment() ast.Expr {
 	}
 
 	return expr
+}
+
+func (p *Parser) or() ast.Expr {
+	left := p.and()
+
+	for p.oneOf(token.OR) {
+		operator := p.pop()
+		right := p.and()
+		left = &ast.LogicalExpr{Left: left, Operator: operator, Right: right}
+	}
+
+	return left
+}
+
+func (p *Parser) and() ast.Expr {
+	left := p.equality()
+
+	for p.oneOf(token.AND) {
+		operator := p.pop()
+		right := p.equality()
+		left = &ast.LogicalExpr{Left: left, Operator: operator, Right: right}
+	}
+
+	return left
 }
 
 func (p *Parser) equality() ast.Expr {

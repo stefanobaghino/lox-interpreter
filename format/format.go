@@ -106,6 +106,16 @@ func (f *Formatter) VisitAssignmentExpr(expr *ast.AssignmentExpr) interface{} {
 	return builder.String()
 }
 
+func (f *Formatter) VisitLogicalExpr(expr *ast.LogicalExpr) interface{} {
+	builder := strings.Builder{}
+	builder.WriteString(f.fmtExpr(expr.Left))
+	builder.WriteRune(' ')
+	builder.WriteString(expr.Operator.Lexeme)
+	builder.WriteRune(' ')
+	builder.WriteString(f.fmtExpr(expr.Right))
+	return builder.String()
+}
+
 func (f *Formatter) VisitBinaryExpr(expr *ast.BinaryExpr) interface{} {
 	builder := strings.Builder{}
 	builder.WriteString(f.fmtExpr(expr.Left))
