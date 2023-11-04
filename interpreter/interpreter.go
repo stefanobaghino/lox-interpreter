@@ -12,20 +12,20 @@ type Callable interface {
 	Call(*Interpreter, []interface{}) interface{}
 }
 
-type builtin struct {
+type function struct {
 	arity int
 	call  func(*Interpreter, []interface{}) interface{}
 }
 
-func newBuiltin(arity int, call func(*Interpreter, []interface{}) interface{}) *builtin {
-	return &builtin{arity: arity, call: call}
+func newFunction(arity int, call func(*Interpreter, []interface{}) interface{}) *function {
+	return &function{arity: arity, call: call}
 }
 
-func (b *builtin) Arity() int {
+func (b *function) Arity() int {
 	return b.arity
 }
 
-func (b *builtin) Call(i *Interpreter, arguments []interface{}) interface{} {
+func (b *function) Call(i *Interpreter, arguments []interface{}) interface{} {
 	return b.call(i, arguments)
 }
 
@@ -47,7 +47,7 @@ type Interpreter struct {
 func NewInterpreter() *Interpreter {
 	globals := NewGlobalEnv()
 	globals.Define("clock", func() interface{} {
-		return newBuiltin(0, func(i *Interpreter, arguments []interface{}) interface{} {
+		return newFunction(0, func(i *Interpreter, arguments []interface{}) interface{} {
 			return float64(time.Now().Unix())
 		})
 	})
@@ -73,6 +73,26 @@ func (i *Interpreter) Interpret(stmt ast.Stmt) (result interface{}, err error) {
 
 func (i *Interpreter) Done() bool {
 	return i.done
+}
+
+func (i *Interpreter) VisitFunDeclStmt(stmt *ast.FunDeclStmt) interface{} {
+	i.env.Define(stmt.Name.Lexeme, func() interface{} {
+		return newFunction(len(stmt.Params), func(i *Interpreter, arguments []interface{}) interface{} {
+			env := NewEnv(i.env)
+			i.env = env
+			for index, param := range stmt.Params {
+				env.Define(param.Lexeme, func() interface{} {
+					return arguments[index]
+				})
+			}
+			defer func() {
+				i.env = env.parent
+			}()
+			stmt.Body.AcceptStmt(i)
+			return nil
+		})
+	})
+	return nil
 }
 
 func (i *Interpreter) VisitVarDeclStmt(stmt *ast.VarDeclStmt) interface{} {

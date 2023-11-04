@@ -95,6 +95,10 @@ func TestParserCall(t *testing.T) {
 	expectFormatted(t, "curried(1)(2);")
 }
 
+func TestParserFunDecl(t *testing.T) {
+	expectFormatted(t, "fun foo()\n{\n\tprint \"a\";\n\tprint clock();\n}")
+}
+
 func expectErrors(t *testing.T, src string, regexps ...string) {
 	t.Helper()
 	p := NewParser(scanner.NewScanner(bufio.NewReader(strings.NewReader(src))))

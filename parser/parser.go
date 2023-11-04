@@ -48,6 +48,9 @@ func (p *Parser) statement() ast.Stmt {
 	if p.oneOf(token.EOF) {
 		return p.endStatement()
 	}
+	if p.oneOf(token.FUN) {
+		return p.functionStatement()
+	}
 	if p.oneOf(token.VAR) {
 		return p.varDeclStatement()
 	}
@@ -75,6 +78,26 @@ func (p *Parser) statement() ast.Stmt {
 func (p *Parser) endStatement() ast.Stmt {
 	p.pop()
 	return &ast.EndStmt{}
+}
+
+func (p *Parser) functionStatement() ast.Stmt {
+	p.pop()
+	name := p.expect(token.IDENTIFIER, "expected identifier after 'fun'")
+	p.expect(token.LEFT_PAREN, "expected '(' after function name")
+	parameters := []token.Token{}
+	if !p.oneOf(token.RIGHT_PAREN) {
+		parameters = append(parameters, p.expect(token.IDENTIFIER, "expected parameter name"))
+		for p.oneOf(token.COMMA) {
+			p.pop()
+			parameters = append(parameters, p.expect(token.IDENTIFIER, "expected parameter name"))
+		}
+	}
+	p.expect(token.RIGHT_PAREN, "expected ')' after parameters")
+	if p.readToken().Type != token.LEFT_BRACE {
+		panic(&SyntaxError{p.tokens[0].Line, "expected '{' after function declaration"})
+	}
+	body := p.blockStatement().(*ast.BlockStmt)
+	return &ast.FunDeclStmt{Name: name, Params: parameters, Body: body}
 }
 
 func (p *Parser) varDeclStatement() ast.Stmt {

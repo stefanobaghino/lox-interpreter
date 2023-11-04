@@ -46,6 +46,22 @@ func (f *Formatter) indent(builder *strings.Builder) {
 	}
 }
 
+func (f *Formatter) VisitFunDeclStmt(stmt *ast.FunDeclStmt) interface{} {
+	builder := strings.Builder{}
+	builder.WriteString("fun ")
+	builder.WriteString(stmt.Name.Lexeme)
+	builder.WriteRune('(')
+	for i, param := range stmt.Params {
+		if i > 0 {
+			builder.WriteString(", ")
+		}
+		builder.WriteString(param.Lexeme)
+	}
+	builder.WriteRune(')')
+	builder.WriteString(f.Format(stmt.Body))
+	return builder.String()
+}
+
 func (f *Formatter) VisitVarDeclStmt(stmt *ast.VarDeclStmt) interface{} {
 	builder := strings.Builder{}
 	builder.WriteString("var ")
@@ -173,10 +189,16 @@ func (f *Formatter) VisitGroupingExpr(expr *ast.GroupingExpr) interface{} {
 }
 
 func (f *Formatter) VisitLiteralExpr(expr *ast.LiteralExpr) interface{} {
-	if expr.Value == nil {
+	switch expr.Value.(type) {
+	case string:
+		return fmt.Sprintf("%q", expr.Value)
+	case float64:
+		return fmt.Sprintf("%f", expr.Value)
+	case nil:
 		return "nil"
+	default:
+		return fmt.Sprintf("%v", expr.Value)
 	}
-	return fmt.Sprintf("%v", expr.Value)
 }
 
 func (f *Formatter) VisitUnaryExpr(expr *ast.UnaryExpr) interface{} {
