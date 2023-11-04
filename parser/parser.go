@@ -48,6 +48,9 @@ func (p *Parser) statement() ast.Stmt {
 	if p.oneOf(token.EOF) {
 		return p.endStatement()
 	}
+	if p.oneOf(token.FUN) {
+		return p.functionStatement()
+	}
 	if p.oneOf(token.VAR) {
 		return p.varDeclStatement()
 	}
@@ -59,6 +62,9 @@ func (p *Parser) statement() ast.Stmt {
 	}
 	if p.oneOf(token.LEFT_BRACE) {
 		return p.blockStatement()
+	}
+	if p.oneOf(token.RETURN) {
+		return p.returnStatement()
 	}
 	if p.oneOf(token.FOR) {
 		return p.forStatement()
@@ -75,6 +81,26 @@ func (p *Parser) statement() ast.Stmt {
 func (p *Parser) endStatement() ast.Stmt {
 	p.pop()
 	return &ast.EndStmt{}
+}
+
+func (p *Parser) functionStatement() ast.Stmt {
+	p.pop()
+	name := p.expect(token.IDENTIFIER, "expected identifier after 'fun'")
+	p.expect(token.LEFT_PAREN, "expected '(' after function name")
+	parameters := []token.Token{}
+	if !p.oneOf(token.RIGHT_PAREN) {
+		parameters = append(parameters, p.expect(token.IDENTIFIER, "expected parameter name"))
+		for p.oneOf(token.COMMA) {
+			p.pop()
+			parameters = append(parameters, p.expect(token.IDENTIFIER, "expected parameter name"))
+		}
+	}
+	p.expect(token.RIGHT_PAREN, "expected ')' after parameters")
+	if p.readToken().Type != token.LEFT_BRACE {
+		panic(&SyntaxError{p.tokens[0].Line, "expected '{' after function declaration"})
+	}
+	body := p.blockStatement().(*ast.BlockStmt)
+	return &ast.FunDeclStmt{Name: name, Params: parameters, Body: body}
 }
 
 func (p *Parser) varDeclStatement() ast.Stmt {
@@ -127,6 +153,16 @@ func (p *Parser) ifStatement() ast.Stmt {
 		ifStmt.ElseBranch = &elseBranch
 	}
 	return ifStmt
+}
+
+func (p *Parser) returnStatement() ast.Stmt {
+	tk := p.pop()
+	var value ast.Expr
+	if !p.oneOf(token.SEMICOLON) {
+		value = p.expression()
+	}
+	p.expect(token.SEMICOLON, "expected ';' after return value")
+	return &ast.ReturnStmt{Keyword: tk, Value: &value}
 }
 
 func (p *Parser) forStatement() ast.Stmt {
@@ -279,7 +315,28 @@ func (p *Parser) unary() ast.Expr {
 		return &ast.UnaryExpr{Operator: operator, Right: right}
 	}
 
-	return p.primary()
+	return p.call()
+}
+
+func (p *Parser) call() ast.Expr {
+	expr := p.primary()
+	for p.oneOf(token.LEFT_PAREN) {
+		p.pop()
+		arguments := []ast.Expr{}
+		if !p.oneOf(token.RIGHT_PAREN) {
+			arguments = append(arguments, p.expression())
+		}
+		for p.oneOf(token.COMMA) {
+			p.pop()
+			arguments = append(arguments, p.expression())
+			if len(arguments) >= 255 {
+				panic(&SyntaxError{p.tokens[0].Line, "cannot have more than 255 arguments"})
+			}
+		}
+		p.expect(token.RIGHT_PAREN, "expected ')' after arguments")
+		expr = &ast.CallExpr{Callee: expr, Arguments: arguments}
+	}
+	return expr
 }
 
 func (p *Parser) primary() ast.Expr {

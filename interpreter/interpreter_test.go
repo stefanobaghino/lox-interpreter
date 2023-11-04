@@ -97,6 +97,10 @@ func TestInterpreterEnv(t *testing.T) {
 	expectRuntimeError(t, "var x = 1; var x = 2;", "variable already declared")
 }
 
+func TestInterpreterFun(t *testing.T) {
+	expectResult(t, "fun f() { return 1; } f();", 1.0)
+}
+
 func expectRuntimeError(t *testing.T, src string, regex string) {
 	t.Helper()
 	if _, err := interpret(t, src); err == nil {

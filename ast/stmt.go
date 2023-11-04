@@ -4,12 +4,14 @@ import "lox/token"
 
 type StmtVisitor interface {
 	VisitVarDeclStmt(*VarDeclStmt) interface{}
+	VisitFunDeclStmt(*FunDeclStmt) interface{}
 	VisitBlockStmt(*BlockStmt) interface{}
 	VisitExprStmt(*ExprStmt) interface{}
 	VisitIfStmt(*IfStmt) interface{}
 	VisitAssertStmt(*AssertStmt) interface{}
 	VisitPrintStmt(*PrintStmt) interface{}
 	VisitWhileStmt(*WhileStmt) interface{}
+	VisitReturnStmt(*ReturnStmt) interface{}
 	VisitEndStmt(*EndStmt) interface{}
 }
 
@@ -24,6 +26,16 @@ type VarDeclStmt struct {
 
 func (s *VarDeclStmt) AcceptStmt(v StmtVisitor) interface{} {
 	return v.VisitVarDeclStmt(s)
+}
+
+type FunDeclStmt struct {
+	Name   token.Token
+	Params []token.Token
+	Body   *BlockStmt
+}
+
+func (s *FunDeclStmt) AcceptStmt(v StmtVisitor) interface{} {
+	return v.VisitFunDeclStmt(s)
 }
 
 type BlockStmt struct {
@@ -75,6 +87,15 @@ type WhileStmt struct {
 
 func (s *WhileStmt) AcceptStmt(v StmtVisitor) interface{} {
 	return v.VisitWhileStmt(s)
+}
+
+type ReturnStmt struct {
+	Keyword token.Token
+	Value   *Expr
+}
+
+func (s *ReturnStmt) AcceptStmt(v StmtVisitor) interface{} {
+	return v.VisitReturnStmt(s)
 }
 
 type EndStmt struct {

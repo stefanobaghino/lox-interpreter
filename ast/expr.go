@@ -5,6 +5,7 @@ import "lox/token"
 type ExprVisitor interface {
 	VisitAssignmentExpr(*AssignmentExpr) interface{}
 	VisitBinaryExpr(*BinaryExpr) interface{}
+	VisitCallExpr(*CallExpr) interface{}
 	VisitGroupingExpr(*GroupingExpr) interface{}
 	VisitLiteralExpr(*LiteralExpr) interface{}
 	VisitLogicalExpr(*LogicalExpr) interface{}
@@ -33,6 +34,16 @@ type BinaryExpr struct {
 
 func (e *BinaryExpr) AcceptExpr(v ExprVisitor) interface{} {
 	return v.VisitBinaryExpr(e)
+}
+
+type CallExpr struct {
+	Callee    Expr
+	Paren     token.Token
+	Arguments []Expr
+}
+
+func (e *CallExpr) AcceptExpr(v ExprVisitor) interface{} {
+	return v.VisitCallExpr(e)
 }
 
 type GroupingExpr struct {
