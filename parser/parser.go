@@ -60,6 +60,9 @@ func (p *Parser) statement() ast.Stmt {
 	if p.oneOf(token.LEFT_BRACE) {
 		return p.blockStatement()
 	}
+	if p.oneOf(token.FOR) {
+		return p.forStatement()
+	}
 	if p.oneOf(token.WHILE) {
 		return p.whileStatement()
 	}
@@ -124,6 +127,41 @@ func (p *Parser) ifStatement() ast.Stmt {
 		ifStmt.ElseBranch = &elseBranch
 	}
 	return ifStmt
+}
+
+func (p *Parser) forStatement() ast.Stmt {
+	p.pop()
+	p.expect(token.LEFT_PAREN, "expected '(' after 'for'")
+	var initializer ast.Stmt
+	if p.oneOf(token.SEMICOLON) {
+		p.pop()
+	} else if p.oneOf(token.VAR) {
+		initializer = p.varDeclStatement()
+	} else {
+		initializer = p.expressionStatement()
+	}
+	var condition ast.Expr
+	if !p.oneOf(token.SEMICOLON) {
+		condition = p.expression()
+	}
+	p.expect(token.SEMICOLON, "expected ';' after loop condition")
+	var increment ast.Expr
+	if !p.oneOf(token.RIGHT_PAREN) {
+		increment = p.expression()
+	}
+	p.expect(token.RIGHT_PAREN, "expected ')' after for clauses")
+	body := p.statement()
+	if increment != nil {
+		body = &ast.BlockStmt{Statements: []ast.Stmt{body, &ast.ExprStmt{Expression: increment}}}
+	}
+	if condition == nil {
+		condition = &ast.LiteralExpr{Value: true}
+	}
+	body = &ast.WhileStmt{Condition: condition, Body: body}
+	if initializer != nil {
+		body = &ast.BlockStmt{Statements: []ast.Stmt{initializer, body}}
+	}
+	return body
 }
 
 func (p *Parser) whileStatement() ast.Stmt {
