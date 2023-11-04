@@ -66,6 +66,10 @@ func TestParserVarDecl(t *testing.T) {
 	expectFormatted(t, "var x = 1;")
 }
 
+func TestParserInvalidAssignmentTarget(t *testing.T) {
+	expectError(t, "1 = 2;", "invalid assignment target")
+}
+
 func TestParserAssert(t *testing.T) {
 	expectFormatted(t, "assert true;")
 }
