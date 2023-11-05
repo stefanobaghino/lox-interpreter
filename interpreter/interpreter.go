@@ -13,12 +13,13 @@ type Callable interface {
 }
 
 type function struct {
-	arity int
-	call  func(*Interpreter, []interface{}) interface{}
+	arity   int
+	closure *Env
+	call    func(*Interpreter, []interface{}) interface{}
 }
 
-func newFunction(arity int, call func(*Interpreter, []interface{}) interface{}) *function {
-	return &function{arity: arity, call: call}
+func newFunction(arity int, closure *Env, call func(*Interpreter, []interface{}) interface{}) *function {
+	return &function{arity: arity, closure: closure, call: call}
 }
 
 func (b *function) Arity() int {
@@ -26,7 +27,9 @@ func (b *function) Arity() int {
 }
 
 func (b *function) Call(i *Interpreter, arguments []interface{}) interface{} {
-	return b.call(i, arguments)
+	i.env = b.closure
+	result := b.call(i, arguments)
+	return result
 }
 
 type Return struct {
@@ -51,7 +54,7 @@ type Interpreter struct {
 func NewInterpreter() *Interpreter {
 	globals := NewGlobalEnv()
 	globals.Define("clock", func() interface{} {
-		return newFunction(0, func(i *Interpreter, arguments []interface{}) interface{} {
+		return newFunction(0, globals, func(i *Interpreter, arguments []interface{}) interface{} {
 			return float64(time.Now().Unix())
 		})
 	})
@@ -81,7 +84,7 @@ func (i *Interpreter) Done() bool {
 
 func (i *Interpreter) VisitFunDeclStmt(stmt *ast.FunDeclStmt) interface{} {
 	i.env.Define(stmt.Name.Lexeme, func() interface{} {
-		return newFunction(len(stmt.Params), func(i *Interpreter, arguments []interface{}) (ret interface{}) {
+		return newFunction(len(stmt.Params), i.env, func(i *Interpreter, arguments []interface{}) (ret interface{}) {
 			env := NewEnv(i.env)
 			i.env = env
 			for index, param := range stmt.Params {
