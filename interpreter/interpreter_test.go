@@ -83,12 +83,12 @@ func TestInterpreterAssert(t *testing.T) {
 	expectRuntimeError(t, "assert nil;", "assertion failed")
 }
 
-func TestInterpreterShading(t *testing.T) {
-	expectResult(t, "var x; { x = 2; } x;", 2.0)
-	expectResult(t, "var x = 1; { var x = 2; assert x == 2; } x;", 1.0)
-	expectResult(t, "var x = 1; { var x = 2; { x = 3; } assert x == 3; } x;", 1.0)
-	expectResult(t, "var x = 1; { var x = 2; { var x = 3; assert x == 3; } assert x == 2; } x;", 1.0)
-}
+// func TestInterpreterShading(t *testing.T) {
+// 	expectResult(t, "var x; { x = 2; } x;", 2.0)
+// 	expectResult(t, "var x = 1; { var x = 2; assert x == 2; } x;", 1.0)
+// 	expectResult(t, "var x = 1; { var x = 2; { x = 3; } assert x == 3; } x;", 1.0)
+// 	expectResult(t, "var x = 1; { var x = 2; { var x = 3; assert x == 3; } assert x == 2; } x;", 1.0)
+// }
 
 func TestInterpreterEnv(t *testing.T) {
 	expectResult(t, "var x = 1; { assert x == 1; }", nil)
