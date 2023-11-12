@@ -13,12 +13,13 @@ type Callable interface {
 }
 
 type function struct {
-	arity int
-	call  func(*Interpreter, []interface{}) interface{}
+	arity   int
+	closure *Env
+	call    func(*Interpreter, []interface{}) interface{}
 }
 
-func newFunction(arity int, call func(*Interpreter, []interface{}) interface{}) *function {
-	return &function{arity: arity, call: call}
+func newFunction(arity int, closure *Env, call func(*Interpreter, []interface{}) interface{}) *function {
+	return &function{arity: arity, closure: closure, call: call}
 }
 
 func (b *function) Arity() int {
@@ -26,7 +27,9 @@ func (b *function) Arity() int {
 }
 
 func (b *function) Call(i *Interpreter, arguments []interface{}) interface{} {
-	return b.call(i, arguments)
+	i.env = b.closure
+	result := b.call(i, arguments)
+	return result
 }
 
 type Return struct {
@@ -43,6 +46,7 @@ func (e RuntimeError) Error() string {
 }
 
 type Interpreter struct {
+	locals  map[ast.Expr]int
 	globals *Env
 	env     *Env
 	done    bool
@@ -51,11 +55,11 @@ type Interpreter struct {
 func NewInterpreter() *Interpreter {
 	globals := NewGlobalEnv()
 	globals.Define("clock", func() interface{} {
-		return newFunction(0, func(i *Interpreter, arguments []interface{}) interface{} {
+		return newFunction(0, globals, func(i *Interpreter, arguments []interface{}) interface{} {
 			return float64(time.Now().Unix())
 		})
 	})
-	return &Interpreter{globals: globals, env: globals}
+	return &Interpreter{locals: make(map[ast.Expr]int), globals: globals, env: globals}
 }
 
 func (i *Interpreter) Interpret(stmt ast.Stmt) (result interface{}, err error) {
@@ -79,9 +83,13 @@ func (i *Interpreter) Done() bool {
 	return i.done
 }
 
+func (i *Interpreter) Resolve(expr ast.Expr, depth int) {
+	i.locals[expr] = depth
+}
+
 func (i *Interpreter) VisitFunDeclStmt(stmt *ast.FunDeclStmt) interface{} {
 	i.env.Define(stmt.Name.Lexeme, func() interface{} {
-		return newFunction(len(stmt.Params), func(i *Interpreter, arguments []interface{}) (ret interface{}) {
+		return newFunction(len(stmt.Params), i.env, func(i *Interpreter, arguments []interface{}) (ret interface{}) {
 			env := NewEnv(i.env)
 			i.env = env
 			for index, param := range stmt.Params {
@@ -175,10 +183,17 @@ func (i *Interpreter) VisitExprStmt(stmt *ast.ExprStmt) interface{} {
 
 func (i *Interpreter) VisitAssignmentExpr(expr *ast.AssignmentExpr) interface{} {
 	var value interface{}
-	i.env.Assign(expr.Name.Lexeme, func() interface{} {
-		value = expr.Value.AcceptExpr(i)
-		return value
-	})
+	if distance, ok := i.locals[expr]; ok {
+		value = i.env.AssignAt(distance, expr.Name.Lexeme, func() interface{} {
+			value = expr.Value.AcceptExpr(i)
+			return value
+		})
+	} else {
+		value = i.globals.Assign(expr.Name.Lexeme, func() interface{} {
+			value = expr.Value.AcceptExpr(i)
+			return value
+		})
+	}
 	return value
 }
 
@@ -351,5 +366,13 @@ func (i *Interpreter) VisitUnaryExpr(expr *ast.UnaryExpr) interface{} {
 }
 
 func (i *Interpreter) VisitVarExpr(expr *ast.VarExpr) interface{} {
-	return i.env.Get(expr.Name.Lexeme)
+	return i.lookupVariable(expr.Name, expr)
+}
+
+func (i *Interpreter) lookupVariable(name token.Token, expr ast.Expr) interface{} {
+	if distance, ok := i.locals[expr]; ok {
+		return i.env.GetAt(distance, name.Lexeme)
+	} else {
+		return i.globals.Get(name.Lexeme)
+	}
 }

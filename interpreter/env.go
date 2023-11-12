@@ -32,6 +32,10 @@ func (e *Env) Assign(name string, initializer func() interface{}) interface{} {
 	}
 }
 
+func (e *Env) AssignAt(distance int, name string, initializer func() interface{}) interface{} {
+	return e.ancestor(distance).Assign(name, initializer)
+}
+
 func (e *Env) Get(name string) interface{} {
 	if value, ok := e.values[name]; ok {
 		return value
@@ -40,4 +44,16 @@ func (e *Env) Get(name string) interface{} {
 	} else {
 		panic(&RuntimeError{message: "variable not defined"})
 	}
+}
+
+func (e *Env) GetAt(distance int, name string) interface{} {
+	return e.ancestor(distance).Get(name)
+}
+
+func (e *Env) ancestor(distance int) *Env {
+	env := e
+	for i := 0; i < distance; i++ {
+		env = env.parent
+	}
+	return env
 }
